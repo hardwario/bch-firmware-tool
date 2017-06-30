@@ -8,9 +8,9 @@ sys.path.insert(0, '.')
 from bcf.github_repos import __version__
 
 if __version__ == '@@VERSION@@':
-    __version__ = '0.0.2'
+    __version__ = '0.0.3'
 
-requirements = ['appdirs']
+requirements = ['appdirs', 'argcomplete']
 
 setup(
     name='bcf',

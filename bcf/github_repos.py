@@ -42,10 +42,8 @@ class Github_Repos:
             if not search or search in name or (description and search in repo['description']):
                 for release in repo['releases']:
                     for i, firmware in enumerate(release['firmwares']):
-                        if i == 0:
-                            row = [firmware['id'], name, release['tag_name'], firmware['name']]
-                        else:
-                            row = [firmware['id'], '', '', firmware['name']]
+                        n = 'bigclownlabs/' + name + ':' + firmware['name'] + ':' + release['tag_name']
+                        row = [n]
 
                         if description:
                             row.append(repo['description'])
@@ -54,12 +52,46 @@ class Github_Repos:
                         break
         return table
 
-    def get_firmware(self, firmware_id):
-        for repo in self._repos.values():
+    def get_firmwares(self):
+        table = []
+        names = list(self._repos.keys())
+        names.sort()
+        for name in names:
+            repo = self._repos[name]
             for release in repo['releases']:
+                for i, firmware in enumerate(release['firmwares']):
+                    table.append('bigclownlabs/' + name + ':' + firmware['name'])
+                    break
+        return table
+
+    def get_firmware(self, name):
+        name = name.split('/', 1)
+
+        if len(name) != 2 or name[0] != 'bigclownlabs':
+            return
+
+        name = name[1].split(':')
+
+        tag_name = None
+        if len(name) == 2:
+            tag_name = 'latest'
+        elif len(name) == 3:
+            tag_name = name[2]
+        else:
+            return
+
+        firmware_name = name[1]
+
+        repo = self._repos.get(name[0], None)
+        if repo is None:
+            return
+
+        for release in repo['releases']:
+            if tag_name == 'latest' or tag_name == release['tag_name']:
                 for firmware in release['firmwares']:
-                    if firmware['id'] == firmware_id:
+                    if firmware['name'] == firmware_name:
                         return firmware
+                return
 
     def api_get(self, url):
         response = urlopen(url)
@@ -74,7 +106,7 @@ class Github_Repos:
                 if not repo or repo['updated_at'] != gh_repo['updated_at']:
                     save = True
 
-                    print('update repo', gh_repo['name'])
+                    print('update data for repo', gh_repo['name'])
 
                     self._repos[gh_repo['name']] = {
                         'name': gh_repo['name'],
