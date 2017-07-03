@@ -4,12 +4,12 @@ import argcomplete
 import argparse
 import os
 import sys
-import subprocess
 import hashlib
 
-from .github_repos import Github_Repos, __version__
-from .lang import tab as lang_tab
 import appdirs
+from .github_repos import Github_Repos, __version__
+import .flash_dfu
+import .flash_serial
 
 try:
     from urllib import urlretrieve
@@ -50,33 +50,6 @@ def print_progress_bar(title, progress, total, length=20):
         print()
 
 
-def dfu(filename_bin, lang):
-    dfu = "dfu-util"
-    try:
-        subprocess.check_output([dfu, "--version"])
-    except Exception:
-        print("Please install dfu-util:")
-        print("sudo apt install dfu-util")
-        print("Or from https://sourceforge.net/projects/dfu-util/files/?source=navbar")
-        return False
-
-    cmd = [dfu, "-s", "0x08000000:leave", "-d", "0483:df11", "-a", "0", "-D", filename_bin]
-
-    status = subprocess.call(cmd)
-
-    if status:
-        print("=" * 60)
-        print(lang_tab[lang]['dfu-help'])
-        return False
-
-
-def flesh(filename_bin, use_dfu, lang):
-    if use_dfu:
-        dfu(filename_bin, lang)
-    else:
-        print("use --dfu")
-        exit()
-
 def download_url_reporthook(count, blockSize, totalSize):
     print_progress_bar('Download', count*blockSize, totalSize)
 
@@ -100,7 +73,7 @@ class FlashChoicesCompleter(object):
     def __call__(self, **kwargs):
         user_cache_dir = appdirs.user_cache_dir('bcf')
         repos = Github_Repos(user_cache_dir)
-        #search = kwargs.get('prefix', None)
+        # search = kwargs.get('prefix', None)
         return repos.get_firmwares()
 
 
@@ -123,12 +96,12 @@ def main():
     subparsers.add_parser('update', help="update list of available firmwares")
 
     subparser_flash = subparsers.add_parser('flash', help="flash firmware",
-                                                     usage='%(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
+                                            usage='%(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
     subparser_flash.add_argument('what', help=argparse.SUPPRESS).completer = FlashChoicesCompleter()
     subparser_flash.add_argument('--dfu', help='use dfu mode', action='store_true')
 
     subparser_pull = subparsers.add_parser('pull', help="pull firmware to cache",
-                                                   usage='%(prog)s <firmware>\n       %(prog)s <url>')
+                                           usage='%(prog)s <firmware>\n       %(prog)s <url>')
     subparser_pull.add_argument('what', help=argparse.SUPPRESS)
 
     subparsers.add_parser('clean', help="clean cache")
@@ -176,7 +149,10 @@ def main():
                 exit(1)
             filename_bin = download_url(firmware['download_url'], user_cache_dir)
 
-        flesh(filename_bin, args.dfu, 'en')
+        if args.dfu:
+            flash_dfu.run(filename_bin)
+        else:
+            flash_serial.run(filename_bin, '/dev/ttyUSB0', reporthook=print_progress_bar)
 
     elif args.command == 'list' or args.command == 'search':
         labels = ['Name:Bin:Version']

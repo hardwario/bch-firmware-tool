@@ -1,1 +1,2 @@
 appdirs>=1.0
+argcomplete>=1.0

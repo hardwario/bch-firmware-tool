@@ -8,7 +8,7 @@ sys.path.insert(0, '.')
 from bcf.github_repos import __version__
 
 if __version__ == '@@VERSION@@':
-    __version__ = '0.0.3'
+    __version__ = '0.0.6'
 
 requirements = ['appdirs', 'argcomplete']
 
