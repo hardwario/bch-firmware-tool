@@ -7,9 +7,14 @@ import sys
 import hashlib
 
 import appdirs
-from .github_repos import Github_Repos, __version__
-import .flash_dfu
-import .flash_serial
+try:
+    from .github_repos import Github_Repos, __version__
+    from . import flash_dfu
+    from . import flash_serial
+except Exception:
+    from github_repos import Github_Repos, __version__
+    import flash_dfu
+    import flash_serial
 
 try:
     from urllib import urlretrieve

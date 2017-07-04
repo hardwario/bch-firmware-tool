@@ -5,6 +5,12 @@ import serial
 import serial.tools.list_ports
 from time import sleep, time
 import math
+import array
+from ctypes import *
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
@@ -12,8 +18,9 @@ ACK = bytes([0x79])
 NACK = bytes([0x1F])
 
 
-class Flash_Serial:
+class Flash_Serial(object):
     def __init__(self, device):
+        self.ser = None
         self.ser = serial.Serial(device,
                                  baudrate=921600,  # 1152000,
                                  bytesize=serial.EIGHTBITS,
@@ -24,6 +31,59 @@ class Flash_Serial:
                                  rtscts=False,
                                  dsrdtr=False)
         self._connect = False
+
+        self._lock()
+        self._speed_up()
+
+    def __del__(self):
+        self._unlock()
+
+    def _lock(self):
+        if not fcntl or not self.ser:
+            return
+        fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        logging.debug('_lock')
+
+    def _unlock(self):
+        if not fcntl:
+            return
+        fcntl.flock(self.ser.fileno(), fcntl.LOCK_UN)
+        logging.debug('_unlock')
+
+    def _speed_up(self):
+        if not fcntl:
+            return
+
+        TIOCGSERIAL = 0x0000541E
+        TIOCSSERIAL = 0x0000541F
+        ASYNC_LOW_LATENCY = 0x2000
+
+        class serial_struct(Structure):
+            _fields_ = [("type", c_int),
+                        ("line", c_int),
+                        ("port", c_uint),
+                        ("irq", c_int),
+                        ("flags", c_int),
+                        ("xmit_fifo_size", c_int),
+                        ("custom_divisor", c_int),
+                        ("baud_base", c_int),
+                        ("close_delay", c_ushort),
+                        ("io_type", c_byte),
+                        ("reserved_char", c_byte * 1),
+                        ("hub6", c_uint),
+                        ("closing_wait", c_ushort),
+                        ("closing_wait2", c_ushort),
+                        ("iomem_base", POINTER(c_ubyte)),
+                        ("iomem_reg_shift", c_ushort),
+                        ("port_high", c_int),
+                        ("iomap_base", c_ulong)]
+
+        buf = serial_struct()
+        fcntl.ioctl(self.ser.fileno(), TIOCGSERIAL, buf)
+        buf.flags |= ASYNC_LOW_LATENCY
+        fcntl.ioctl(self.ser.fileno(), TIOCSSERIAL, buf)
+
+        logging.debug('_speed_up')
 
     def connect(self):
         if not self._connect:
@@ -41,26 +101,25 @@ class Flash_Serial:
         return self.connect()
 
     def start_bootloader(self):
-        self.ser1.rts = True
-        self.ser1.dtr = True
+        self.ser.rts = True
+        self.ser.dtr = True
         sleep(0.1)
 
-        self.ser1.rts = True
-        self.ser1.dtr = False
+        self.ser.rts = True
+        self.ser.dtr = False
         sleep(0.1)
 
-        self.ser1.dtr = True
-        self.ser1.rts = False
+        self.ser.dtr = True
+        self.ser.rts = False
         sleep(0.1)
 
-        self.ser1.dtr = False
+        self.ser.dtr = False
 
         sleep(0.001)
 
         for i in range(5):
             self.ser.reset_input_buffer()
             self.ser.reset_output_buffer()
-
             self.ser.write([0x7f])
             self.ser.flush()
             if self._wait_for_ack():

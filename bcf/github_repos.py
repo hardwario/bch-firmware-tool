@@ -61,7 +61,7 @@ class Github_Repos:
             for release in repo['releases']:
                 for i, firmware in enumerate(release['firmwares']):
                     table.append('bigclownlabs/' + name + ':' + firmware['name'])
-                    break
+                break
         return table
 
     def get_firmware(self, name):
