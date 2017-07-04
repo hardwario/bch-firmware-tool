@@ -309,7 +309,8 @@ def run(filename_bin, device, reporthook=None):
     if api.get_ID() != b'\x01\x04G':
         raise Exception('Bad ID')
 
-    pages = math.ceil(len(firmware) / 128)
+    length = len(firmware)
+    pages = math.ceil(length / 128)
 
     if reporthook:
         reporthook('Erase ', 0, pages)
@@ -325,11 +326,10 @@ def run(filename_bin, device, reporthook=None):
         if reporthook:
             reporthook('Erase ', page_stop, pages)
 
-    length = len(firmware)
     if reporthook:
         reporthook('Write ', 0, length)
 
-    step = 256
+    step = 128
     for offset in range(0, length, step):
         write_len = length - offset
         if write_len > step:
@@ -346,12 +346,17 @@ def run(filename_bin, device, reporthook=None):
     if reporthook:
         reporthook('Verify', 0, length)
 
-    for offset in range(0, length, 256):
+    step = 128
+    for offset in range(0, length, step):
         read_len = length - offset
-        if read_len > 256:
-            read_len = 256
-        data = api.read_memory(start_address + offset, read_len)
-        if data != firmware[offset:offset + read_len]:
+        if read_len > step:
+            read_len = step
+        for i in range(3):
+            data = api.read_memory(start_address + offset, read_len)
+            if data == firmware[offset:offset + read_len]:
+                break
+            api.reconnect()
+        else:
             raise Exception('not match')
 
         if reporthook:
