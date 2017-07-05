@@ -45,7 +45,7 @@ class Flash_Serial(object):
         logging.debug('_lock')
 
     def _unlock(self):
-        if not fcntl:
+        if not fcntl or not self.ser:
             return
         fcntl.flock(self.ser.fileno(), fcntl.LOCK_UN)
         logging.debug('_unlock')
@@ -95,6 +95,9 @@ class Flash_Serial(object):
                 logging.info('repeate reset')
                 sleep(0.5)
         return self._connect
+
+    def set_disconnect(self):
+        self._connect = False
 
     def reconnect(self):
         self._connect = False
@@ -293,12 +296,8 @@ class Flash_Serial(object):
         return False
 
 
-def run(filename_bin, device, reporthook=None):
-
-    firmware = open(filename_bin, 'rb').read()
-    start_address = 0x08000000
-
-    api = Flash_Serial(device)
+def _run_connect(api):
+    api.set_disconnect()
 
     if api.get_version() != b'1\x00\x00':
         raise Exception('Bad Verison')
@@ -308,6 +307,16 @@ def run(filename_bin, device, reporthook=None):
 
     if api.get_ID() != b'\x01\x04G':
         raise Exception('Bad ID')
+
+
+def run(filename_bin, device, reporthook=None):
+
+    firmware = open(filename_bin, 'rb').read()
+    start_address = 0x08000000
+
+    api = Flash_Serial(device)
+
+    _run_connect(api)
 
     length = len(firmware)
     pages = math.ceil(length / 128)
@@ -334,12 +343,13 @@ def run(filename_bin, device, reporthook=None):
         write_len = length - offset
         if write_len > step:
             write_len = step
-        for i in range(3):
+        for i in range(4):
             if api.write_memory(start_address + offset, firmware[offset:offset + write_len]):
                 if reporthook:
                     reporthook('Write ', offset + write_len, length)
                 break
-            api.reconnect()
+            if i == 2:
+                _run_connect(api)
         else:
             raise Exception('Write error')
 
@@ -351,11 +361,12 @@ def run(filename_bin, device, reporthook=None):
         read_len = length - offset
         if read_len > step:
             read_len = step
-        for i in range(3):
+        for i in range(4):
             data = api.read_memory(start_address + offset, read_len)
             if data == firmware[offset:offset + read_len]:
                 break
-            api.reconnect()
+            if i == 2:
+                _run_connect(api)
         else:
             raise Exception('not match')
 
@@ -363,6 +374,14 @@ def run(filename_bin, device, reporthook=None):
             reporthook('Verify', offset + read_len, length)
 
     api.go(start_address)
+
+
+def get_list_devices():
+    table = []
+    for p in serial.tools.list_ports.comports():
+        if (p.vid == 0x0403, p.pid == 0x6001):
+            table.append(p.device)
+    return table
 
 
 if __name__ == '__main__':

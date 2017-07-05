@@ -82,7 +82,16 @@ class FlashChoicesCompleter(object):
         return repos.get_firmwares()
 
 
+class FlashChoicesCompleter(object):
+    def __call__(self, **kwargs):
+        user_cache_dir = appdirs.user_cache_dir('bcf')
+        repos = Github_Repos(user_cache_dir)
+        # search = kwargs.get('prefix', None)
+        return repos.get_firmwares()
+
+
 def main():
+    devices = flash_serial.get_list_devices()
     parser = argparse.ArgumentParser(description='BigClown Firmware Flasher')
 
     subparsers = parser.add_subparsers(dest='command', metavar='COMMAND')
@@ -103,7 +112,11 @@ def main():
     subparser_flash = subparsers.add_parser('flash', help="flash firmware",
                                             usage='%(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
     subparser_flash.add_argument('what', help=argparse.SUPPRESS).completer = FlashChoicesCompleter()
+    subparser_flash.add_argument('--device', help='device',
+                                 default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
     subparser_flash.add_argument('--dfu', help='use dfu mode', action='store_true')
+
+    subparsers.add_parser('devices', help="show devices")
 
     subparser_pull = subparsers.add_parser('pull', help="pull firmware to cache",
                                            usage='%(prog)s <firmware>\n       %(prog)s <url>')
@@ -123,22 +136,17 @@ def main():
     user_cache_dir = appdirs.user_cache_dir('bcf')
     repos = Github_Repos(user_cache_dir)
 
-    if args.command == 'clean':
-        repos.clear()
+    if args.command == 'list' or args.command == 'search':
+        labels = ['Name:Bin:Version']
+        if args.description:
+            labels.append('description')
 
-    elif args.command == 'update':
-        repos.update()
-
-    elif args.command == 'pull':
-        if args.what.startswith('http'):
-            url = args.what
+        if args.command == 'search':
+            rows = repos.get_firmwares_table(search=args.pattern, all=args.all, description=args.description)
         else:
-            firmware = repos.get_firmware(args.what)
-            if not firmware:
-                print('Firmware not found, try updating first')
-                exit(1)
-            url = firmware['download_url']
-        download_url(url, user_cache_dir, False)
+            rows = repos.get_firmwares_table(all=args.all, description=args.description)
+
+        print_table(labels, rows)
 
     elif args.command == 'flash':
         if args.what.startswith('http'):
@@ -157,19 +165,32 @@ def main():
         if args.dfu:
             flash_dfu.run(filename_bin)
         else:
-            flash_serial.run(filename_bin, '/dev/ttyUSB0', reporthook=print_progress_bar)
+            try:
+                flash_serial.run(filename_bin, args.device, reporthook=print_progress_bar)
+            except Exception as e:
+                print(str(e))
+                exit(1)
 
-    elif args.command == 'list' or args.command == 'search':
-        labels = ['Name:Bin:Version']
-        if args.description:
-            labels.append('description')
+    elif args.command == 'update':
+        repos.update()
 
-        if args.command == 'search':
-            rows = repos.get_firmwares_table(search=args.pattern, all=args.all, description=args.description)
+    elif args.command == 'devices':
+        for device in devices:
+            print(device)
+
+    elif args.command == 'pull':
+        if args.what.startswith('http'):
+            url = args.what
         else:
-            rows = repos.get_firmwares_table(all=args.all, description=args.description)
+            firmware = repos.get_firmware(args.what)
+            if not firmware:
+                print('Firmware not found, try updating first')
+                exit(1)
+            url = firmware['download_url']
+        download_url(url, user_cache_dir, False)
 
-        print_table(labels, rows)
+    elif args.command == 'clean':
+        repos.clear()
 
 
 if __name__ == '__main__':
