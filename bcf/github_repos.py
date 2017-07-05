@@ -6,8 +6,6 @@ try:
 except ImportError:  # Python 3
     from urllib.request import urlopen, urlretrieve
 
-__version__ = '@@VERSION@@'
-
 
 class Github_Repos:
 

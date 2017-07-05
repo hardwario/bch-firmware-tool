@@ -8,11 +8,11 @@ import hashlib
 
 import appdirs
 try:
-    from .github_repos import Github_Repos, __version__
+    from .github_repos import Github_Repos
     from . import flash_dfu
     from . import flash_serial
 except Exception:
-    from github_repos import Github_Repos, __version__
+    from github_repos import Github_Repos
     import flash_dfu
     import flash_serial
 
@@ -20,6 +20,8 @@ try:
     from urllib import urlretrieve
 except ImportError:  # Python 3
     from urllib.request import urlretrieve
+
+__version__ = '@@VERSION@@'
 
 
 def print_table(labels, rows):
@@ -50,13 +52,13 @@ def print_progress_bar(title, progress, total, length=20):
     if percent > 100:
         percent = 100
     print('\r', end='\r')
-    print(title + ' ['+bar+'] ' + "{:5.1f}%".format(percent), end=' ')
+    print(title + ' [' + bar + '] ' + "{:5.1f}%".format(percent), end=' ')
     if percent == 100:
         print()
 
 
 def download_url_reporthook(count, blockSize, totalSize):
-    print_progress_bar('Download', count*blockSize, totalSize)
+    print_progress_bar('Download', count * blockSize, totalSize)
 
 
 def download_url(url, user_cache_dir, use_cache=True):

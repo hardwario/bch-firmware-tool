@@ -4,3 +4,4 @@ build/
 dist/
 bcf.egg-info/
 dfu-help.*
+.venv/
