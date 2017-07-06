@@ -97,49 +97,54 @@ class Github_Repos:
 
     def update(self):
         save = False
-        for gh_repo in self.api_get('https://api.github.com/orgs/bigclownlabs/repos'):
-            if gh_repo['name'].startswith('bcf') and gh_repo['name'] != 'bcf-sdk-core-module':
+        page = 1
+        while True:
+            gh_repos = self.api_get('https://api.github.com/orgs/bigclownlabs/repos?page=%d' % page)
+            if not gh_repos:
+                break
+            for gh_repo in gh_repos:
+                if gh_repo['name'].startswith('bcf') and gh_repo['name'] != 'bcf-sdk-core-module':
 
-                repo = self._repos.get(gh_repo['name'], None)
-                if not repo or repo['updated_at'] != gh_repo['updated_at']:
-                    save = True
+                    repo = self._repos.get(gh_repo['name'], None)
+                    if not repo or repo['updated_at'] != gh_repo['updated_at']:
+                        save = True
 
-                    print('update data for repo', gh_repo['name'])
+                        print('update data for repo', gh_repo['name'])
 
-                    self._repos[gh_repo['name']] = {
-                        'name': gh_repo['name'],
-                        'updated_at': gh_repo['updated_at'],
-                        'description': gh_repo['description'],
-                    }
+                        self._repos[gh_repo['name']] = {
+                            'name': gh_repo['name'],
+                            'updated_at': gh_repo['updated_at'],
+                            'description': gh_repo['description'],
+                        }
 
-                    releases = []
+                        releases = []
 
-                    for gh_release in self.api_get(gh_repo['releases_url'][:-5]):
-                        release = None
-                        for gh_assets in gh_release.get('assets', []):
-                            if gh_assets['browser_download_url'].endswith(".bin"):
-                                if not release:
-                                    release = {
-                                        'tag_name': gh_release['tag_name'],
-                                        'published_at': gh_release['published_at'],
-                                        'firmwares': []
-                                    }
+                        for gh_release in self.api_get(gh_repo['releases_url'][:-5]):
+                            release = None
+                            for gh_assets in gh_release.get('assets', []):
+                                if gh_assets['browser_download_url'].endswith(".bin"):
+                                    if not release:
+                                        release = {
+                                            'tag_name': gh_release['tag_name'],
+                                            'published_at': gh_release['published_at'],
+                                            'firmwares': []
+                                        }
 
-                                release['firmwares'].append({
-                                    'id': str(gh_assets['id']),
-                                    'download_url': gh_assets['browser_download_url'],
-                                    'size': gh_assets['size'],
-                                    'name': gh_assets['name']
-                                })
+                                    release['firmwares'].append({
+                                        'id': str(gh_assets['id']),
+                                        'download_url': gh_assets['browser_download_url'],
+                                        'size': gh_assets['size'],
+                                        'name': gh_assets['name']
+                                    })
 
-                                if repo:
-                                    self._updated.append(str(gh_assets['id']))
+                                    if repo:
+                                        self._updated.append(str(gh_assets['id']))
 
-                        if release:
-                            releases.append(release)
+                            if release:
+                                releases.append(release)
 
-                    self._repos[gh_repo['name']]['releases'] = releases
-
+                        self._repos[gh_repo['name']]['releases'] = releases
+            page += 1
         if save:
             with open(self._cache_repos, 'w') as fp:
                 json.dump(self._repos, fp, sort_keys=True, indent=2)
