@@ -37,6 +37,7 @@ build_pip() {
     chmod +x bcf/cli.py
 
 	replace_placeholders bcf/cli.py
+    replace_placeholders setup.py
 
     python3 setup.py sdist
 }

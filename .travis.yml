@@ -2,8 +2,8 @@ sudo: false
 language: python
 python: 3.4
 script:
-    - "./script/test"
-    - "./script/build"
+  - ./script/test
+  - ./script/build
 deploy:
   provider: pypi
   user: bigclownlabs
