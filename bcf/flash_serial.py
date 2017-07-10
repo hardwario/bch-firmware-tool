@@ -382,8 +382,12 @@ def run(filename_bin, device, reporthook=None):
 def get_list_devices():
     table = []
     for p in serial.tools.list_ports.comports():
-        if (p.vid == 0x0403, p.pid == 0x6001):
-            table.append(p.device)
+        if type(p) == tuple: # for turris
+            if 'VID:PID=0483:5740' in p[2]:
+                table.append(p[0])
+        else:
+            if p.vid == 0x0403 and p.pid == 0x6001:
+                table.append(p.device)
     return table
 
 
