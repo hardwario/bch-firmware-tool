@@ -126,6 +126,8 @@ def main():
 
     subparsers.add_parser('clean', help="clean cache")
 
+    subparsers.add_parser('clean', help="clean cache")
+
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
     argcomplete.autocomplete(parser)
@@ -139,6 +141,7 @@ def main():
     repos = Github_Repos(user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
+        # TODO odmazat vrsek
         labels = ['Name:Bin:Version']
         if args.description:
             labels.append('description')
@@ -193,6 +196,10 @@ def main():
 
     elif args.command == 'clean':
         repos.clear()
+        for filename in os.listdir(user_cache_dir):
+            os.unlink(os.path.join(user_cache_dir, filename))
+
+    # Todo create, clone
 
 
 if __name__ == '__main__':

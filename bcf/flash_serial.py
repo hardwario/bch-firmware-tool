@@ -299,6 +299,9 @@ class Flash_Serial(object):
 def _run_connect(api):
     api.set_disconnect()
 
+    if not api.connect():
+        raise Exception('Failed to connect')
+
     if api.get_version() != b'1\x00\x00':
         raise Exception('Bad Verison')
 

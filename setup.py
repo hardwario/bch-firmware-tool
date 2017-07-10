@@ -3,17 +3,13 @@
 
 from setuptools import setup, find_packages
 
-import sys
-sys.path.insert(0, '.')
-from bcf.cli import __version__
-
-requirements = ['appdirs', 'argcomplete']
+requirements = ['appdirs', 'argcomplete', 'pyserial']
 
 setup(
     name='bcf',
     packages=["bcf"],
     package_dir={'': '.'},
-    version=__version__,
+    version='@@VERSION@@',
     description='BigClown firmware flasher.',
     author='BigClownLabs',
     author_email='karel.blavka@bigclown.com',
