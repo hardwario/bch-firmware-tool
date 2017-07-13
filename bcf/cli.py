@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 import hashlib
+import glob
 
 import appdirs
 try:
@@ -25,7 +26,7 @@ __version__ = '@@VERSION@@'
 
 
 def print_table(labels, rows):
-    max_lengths = [0] * len(labels)
+    max_lengths = [0] * len(rows[0])
     for i, label in enumerate(labels):
         max_lengths[i] = len(label)
 
@@ -36,9 +37,9 @@ def print_table(labels, rows):
 
     row_format = "{:<" + "}  {:<".join(map(str, max_lengths)) + "}"
 
-    print(row_format.format(*labels))
-
-    print("=" * (sum(max_lengths) + len(labels) * 2))
+    if labels:
+        print(row_format.format(*labels))
+        print("=" * (sum(max_lengths) + len(labels) * 2))
 
     for row in rows:
         print(row_format.format(*row))
@@ -89,7 +90,7 @@ class FlashChoicesCompleter(object):
         user_cache_dir = appdirs.user_cache_dir('bcf')
         repos = Github_Repos(user_cache_dir)
         # search = kwargs.get('prefix', None)
-        return repos.get_firmwares()
+        return repos.get_firmwares() + glob.glob('*.bin')
 
 
 def main():
@@ -126,7 +127,7 @@ def main():
 
     subparsers.add_parser('clean', help="clean cache")
 
-    subparsers.add_parser('clean', help="clean cache")
+    subparsers.add_parser('clone', help="clean cache")
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
@@ -141,17 +142,16 @@ def main():
     repos = Github_Repos(user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
-        # TODO odmazat vrsek
-        labels = ['Name:Bin:Version']
-        if args.description:
-            labels.append('description')
+        # labels = ['Name:Bin:Version']
+        # if args.description:
+        #     labels.append('description')
 
         if args.command == 'search':
             rows = repos.get_firmwares_table(search=args.pattern, all=args.all, description=args.description)
         else:
             rows = repos.get_firmwares_table(all=args.all, description=args.description)
 
-        print_table(labels, rows)
+        print_table([], rows)
 
     elif args.command == 'flash':
         if args.what.startswith('http'):
@@ -171,7 +171,7 @@ def main():
             flash_dfu.run(filename_bin)
         else:
             try:
-                flash_serial.run(filename_bin, args.device, reporthook=print_progress_bar)
+                flash_serial.run(args.device, filename_bin, reporthook=print_progress_bar)
             except Exception as e:
                 print(str(e))
                 exit(1)

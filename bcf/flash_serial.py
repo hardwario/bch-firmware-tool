@@ -312,16 +312,11 @@ def _run_connect(api):
         raise Exception('Bad ID')
 
 
-def run(filename_bin, device, reporthook=None):
+def erase(device, length=196608, reporthook=None, api=None):
+    if api is None:
+        api = Flash_Serial(device)
+        _run_connect(api)
 
-    firmware = open(filename_bin, 'rb').read()
-    start_address = 0x08000000
-
-    api = Flash_Serial(device)
-
-    _run_connect(api)
-
-    length = len(firmware)
     pages = math.ceil(length / 128)
 
     if reporthook:
@@ -330,13 +325,21 @@ def run(filename_bin, device, reporthook=None):
     for page_start in range(0, pages, 80):
         page_stop = page_start + 80
         if page_stop > pages:
-            page_stop = pages + 1
+            page_stop = pages
 
         if not api.extended_erase_memory(range(page_start, page_stop)):
             raise Exception('Errase error')
 
         if reporthook:
             reporthook('Erase ', page_stop, pages)
+
+
+def write(device, firmware, reporthook=None, api=None, start_address=0x08000000):
+    if api is None:
+        api = Flash_Serial(device)
+        _run_connect(api)
+
+    length = len(firmware)
 
     if reporthook:
         reporthook('Write ', 0, length)
@@ -359,6 +362,14 @@ def run(filename_bin, device, reporthook=None):
     if reporthook:
         reporthook('Verify', 0, length)
 
+
+def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000):
+    if api is None:
+        api = Flash_Serial(device)
+        _run_connect(api)
+
+    length = len(firmware)
+
     step = 128
     for offset in range(0, length, step):
         read_len = length - offset
@@ -376,7 +387,24 @@ def run(filename_bin, device, reporthook=None):
         if reporthook:
             reporthook('Verify', offset + read_len, length)
 
-    api.go(start_address)
+
+def run(device, filename_bin, reporthook=None):
+
+    firmware = open(filename_bin, 'rb').read()
+
+    api = Flash_Serial(device)
+
+    _run_connect(api)
+
+    length = len(firmware)
+
+    erase(device, length=length, reporthook=reporthook, api=api)
+
+    write(device, firmware, reporthook=reporthook, api=api)
+
+    verify(device, firmware, reporthook=reporthook, api=api)
+
+    api.go(0x08000000)
 
 
 def get_list_devices():
@@ -386,7 +414,7 @@ def get_list_devices():
             if 'VID:PID=0483:5740' in p[2]:
                 table.append(p[0])
         else:
-            if p.vid == 0x0403 and p.pid == 0x6001:
+            if (p.vid == 0x0403 and p.pid == 0x6001) or (p.vid == 0x0403 and p.pid == 0x6015):
                 table.append(p.device)
     return table
 
