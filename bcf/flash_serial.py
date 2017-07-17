@@ -12,13 +12,15 @@ try:
 except ImportError:
     fcntl = None
 
+from . import bridge
+
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 ACK = bytes([0x79])
 NACK = bytes([0x1F])
 
 
-class Flash_Serial(object):
+class SerialPort:
     def __init__(self, device):
         self.ser = None
         self.ser = serial.Serial(device,
@@ -34,6 +36,13 @@ class Flash_Serial(object):
 
         self._lock()
         self._speed_up()
+
+        self.reset_input_buffer = self.ser.reset_input_buffer
+        self.reset_output_buffer = self.ser.reset_output_buffer
+
+        self.write = self.ser.write
+        self.read = self.ser.read
+        self.flush = self.ser.flush
 
     def __del__(self):
         self._unlock()
@@ -85,6 +94,30 @@ class Flash_Serial(object):
 
         logging.debug('_speed_up')
 
+    def reset_sequence(self):
+        self.ser.rts = True
+        self.ser.dtr = True
+        sleep(0.1)
+
+        self.ser.rts = True
+        self.ser.dtr = False
+        sleep(0.1)
+
+        self.ser.dtr = True
+        self.ser.rts = False
+        sleep(0.1)
+
+        self.ser.dtr = False
+
+
+class Flash_Serial(object):
+    def __init__(self, device):
+        self.ser = None
+        if 'hidraw' in device:
+            self.ser = bridge.SerialPort(device)
+        else:
+            self.ser = SerialPort(device)
+
     def connect(self):
         if not self._connect:
             logging.debug('connect')
@@ -104,19 +137,7 @@ class Flash_Serial(object):
         return self.connect()
 
     def start_bootloader(self):
-        self.ser.rts = True
-        self.ser.dtr = True
-        sleep(0.1)
-
-        self.ser.rts = True
-        self.ser.dtr = False
-        sleep(0.1)
-
-        self.ser.dtr = True
-        self.ser.rts = False
-        sleep(0.1)
-
-        self.ser.dtr = False
+        self.ser.reset_sequence()
 
         sleep(0.001)
 
@@ -297,19 +318,29 @@ class Flash_Serial(object):
 
 
 def _run_connect(api):
-    api.set_disconnect()
+    i = 0
+    while True:
+        try:
+            api.set_disconnect()
 
-    if not api.connect():
-        raise Exception('Failed to connect')
+            if not api.connect():
+                raise Exception('Failed to connect')
 
-    if api.get_version() != b'1\x00\x00':
-        raise Exception('Bad Verison')
+            if api.get_version() != b'1\x00\x00':
+                raise Exception('Bad Verison')
 
-    if api.get_command() != (11, 49, b'\x00\x01\x02\x11!1Dcs\x82\x92'):
-        raise Exception('Bad Command')
+            if api.get_command() != (11, 49, b'\x00\x01\x02\x11!1Dcs\x82\x92'):
+                raise Exception('Bad Command')
 
-    if api.get_ID() != b'\x01\x04G':
-        raise Exception('Bad ID')
+            if api.get_ID() != b'\x01\x04G':
+                raise Exception('Bad ID')
+
+            return True
+
+        except Exception as e:
+            if i > 2:
+                raise e
+            i += 1
 
 
 def erase(device, length=196608, reporthook=None, api=None):
@@ -416,6 +447,10 @@ def get_list_devices():
         else:
             if (p.vid == 0x0403 and p.pid == 0x6001) or (p.vid == 0x0403 and p.pid == 0x6015):
                 table.append(p.device)
+
+    for b in bridge.get_list():
+        table.append(b[1])
+
     return table
 
 
