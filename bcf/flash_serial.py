@@ -9,10 +9,13 @@ import array
 from ctypes import *
 try:
     import fcntl
+    try:
+        from . import bridge
+    except Exception:
+        import bridge
 except ImportError:
     fcntl = None
-
-from . import bridge
+    bridge = None
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
@@ -113,7 +116,7 @@ class SerialPort:
 class Flash_Serial(object):
     def __init__(self, device):
         self.ser = None
-        if 'hidraw' in device:
+        if bridge and 'hidraw' in device:
             self.ser = bridge.SerialPort(device)
         else:
             self.ser = SerialPort(device)
