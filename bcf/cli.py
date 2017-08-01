@@ -6,6 +6,10 @@ import os
 import sys
 import hashlib
 import glob
+import tempfile
+import zipfile
+import shutil
+import platform
 
 import appdirs
 try:
@@ -23,6 +27,9 @@ except ImportError:  # Python 3
     from urllib.request import urlretrieve
 
 __version__ = '@@VERSION@@'
+SKELETON_URL_ZIP = 'https://github.com/bigclownlabs/bcf-skeleton-core-module/archive/master.zip'
+SDK_URL_ZIP = 'https://github.com/bigclownlabs/bcf-sdk-core-module/archive/master.zip'
+SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk-core-module.git'
 
 
 def print_table(labels, rows):
@@ -47,6 +54,8 @@ def print_table(labels, rows):
 
 def print_progress_bar(title, progress, total, length=20):
     filled_length = int(length * progress // total)
+    if filled_length < 0:
+        filled_length = 0
     bar = '#' * filled_length
     bar += '-' * (length - filled_length)
     percent = 100 * (progress / float(total))
@@ -127,7 +136,9 @@ def main():
 
     subparsers.add_parser('clean', help="clean cache")
 
-    subparsers.add_parser('clone', help="clean cache")
+    subparser_create = subparsers.add_parser('create', help="create new firmware")
+    subparser_create.add_argument('name', help=argparse.SUPPRESS)
+    subparser_create.add_argument('--no-git', help='disable git', action='store_true')
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
@@ -199,7 +210,50 @@ def main():
         for filename in os.listdir(user_cache_dir):
             os.unlink(os.path.join(user_cache_dir, filename))
 
-    # Todo create, clone
+    elif args.command == 'create':
+        name = args.name
+
+        if os.path.exists(name):
+            print('Directory already exists')
+            exit(1)
+
+        skeleton_zip_filename = download_url(SKELETON_URL_ZIP, user_cache_dir)
+
+        tmp_dir = tempfile.mkdtemp()
+
+        zip_ref = zipfile.ZipFile(skeleton_zip_filename, 'r')
+        zip_ref.extractall(tmp_dir)
+        zip_ref.close()
+
+        skeleton_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+        shutil.move(skeleton_path, name)
+
+        os.rmdir(os.path.join(name, 'sdk'))
+        os.chdir(name)
+
+        if args.no_git:
+            sdk_zip_filename = download_url(SDK_URL_ZIP, user_cache_dir)
+            zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
+            zip_ref.extractall(tmp_dir)
+            zip_ref.close()
+
+            sdk_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+            shutil.move(sdk_path, 'sdk')
+
+        else:
+
+            os.system('git init')
+            os.system('git submodule add --depth 1 "' + SDK_GIT + '" sdk')
+
+        if platform.system() != 'Windows':
+            os.chmod('build.sh', 775)
+        else:
+            print('Make this command if you want to use travis for build')
+            print('git update-index --chmod=+x build.sh')
+
+        os.rmdir(tmp_dir)
+
+    # Todo clone
 
 
 if __name__ == '__main__':
