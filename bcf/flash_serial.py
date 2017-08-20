@@ -451,8 +451,9 @@ def get_list_devices():
             if (p.vid == 0x0403 and p.pid == 0x6001) or (p.vid == 0x0403 and p.pid == 0x6015):
                 table.append(p.device)
 
-    for b in bridge.get_list():
-        table.append(b[1])
+    if bridge:
+        for b in bridge.get_list():
+            table.append(b[1])
 
     return table
 
