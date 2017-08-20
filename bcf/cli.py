@@ -245,13 +245,6 @@ def main():
             os.system('git init')
             os.system('git submodule add --depth 1 "' + SDK_GIT + '" sdk')
 
-        if os.path.exists('build.sh'):
-            if platform.system() != 'Windows':
-                os.chmod('build.sh', 775)
-            else:
-                print('Make this command if you want to use travis for build')
-                print('git update-index --chmod=+x build.sh')
-
         os.rmdir(tmp_dir)
 
     # Todo clone
