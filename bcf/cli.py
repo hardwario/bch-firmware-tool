@@ -33,7 +33,10 @@ SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk-core-module.git'
 
 
 def print_table(labels, rows):
-    max_lengths = [0] * len(rows[0])
+    if not labels and not rows:
+        return
+
+    max_lengths = [0] * (len(rows[0]) if rows else len(labels))
     for i, label in enumerate(labels):
         max_lengths[i] = len(label)
 
@@ -61,8 +64,11 @@ def print_progress_bar(title, progress, total, length=20):
     percent = 100 * (progress / float(total))
     if percent > 100:
         percent = 100
-    print('\r', end='\r')
-    print(title + ' [' + bar + '] ' + "{:5.1f}%".format(percent), end=' ')
+    elif percent < 0:
+        percent = 0
+    sys.stdout.write('\r\r')
+    sys.stdout.write(title + ' [' + bar + '] ' + "{:5.1f}%".format(percent))
+    sys.stdout.flush()
     if percent == 100:
         print()
 
@@ -162,7 +168,10 @@ def main():
         else:
             rows = repos.get_firmwares_table(all=args.all, description=args.description)
 
-        print_table([], rows)
+        if rows:
+            print_table([], rows)
+        else:
+            print('Nothing found, try updating first')
 
     elif args.command == 'flash':
         if args.what.startswith('http'):
