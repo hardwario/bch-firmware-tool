@@ -106,15 +106,15 @@ class Github_Repos:
                 if gh_repo['name'].startswith('bcf') and gh_repo['name'] != 'bcf-sdk-core-module':
 
                     repo = self._repos.get(gh_repo['name'], None)
-                    if not repo or repo['updated_at'] != gh_repo['updated_at']:
-                        save = True
+                    if not repo or repo['pushed_at'] != gh_repo['pushed_at']:
 
                         print('update data for repo', gh_repo['name'])
 
-                        self._repos[gh_repo['name']] = {
+                        new_repo = {
                             'name': gh_repo['name'],
-                            'updated_at': gh_repo['updated_at'],
+                            'pushed_at': gh_repo['pushed_at'],
                             'description': gh_repo['description'],
+                            'tag': None
                         }
 
                         releases = []
@@ -143,7 +143,11 @@ class Github_Repos:
                             if release:
                                 releases.append(release)
 
-                        self._repos[gh_repo['name']]['releases'] = releases
+                        if releases:
+                            if releases[0]['tag_name'] != repo['releases'][0]['tag_name']:
+                                new_repo['releases'] = releases
+                                self._repos[gh_repo['name']] = new_repo
+                                save = True
             page += 1
         if save:
             with open(self._cache_repos, 'w') as fp:
