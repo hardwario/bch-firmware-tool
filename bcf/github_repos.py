@@ -105,10 +105,10 @@ class Github_Repos:
             for gh_repo in gh_repos:
                 if gh_repo['name'].startswith('bcf') and gh_repo['name'] != 'bcf-sdk-core-module':
 
-                    repo = self._repos.get(gh_repo['name'], None)
-                    if not repo or repo['pushed_at'] != gh_repo['pushed_at']:
+                    repo = self._repos.get(gh_repo['name'], {'pushed_at': None, 'releases': [{'tag_name': None}]})
+                    if repo['pushed_at'] != gh_repo['pushed_at']:
 
-                        print('update data for repo', gh_repo['name'])
+                        print('update data for repo', 'bigclownlabs/' + gh_repo['name'])
 
                         new_repo = {
                             'name': gh_repo['name'],
