@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
+import __future__
 import argcomplete
 import argparse
 import os
 import sys
+import logging
 import hashlib
 import glob
 import tempfile
@@ -70,7 +72,8 @@ def print_progress_bar(title, progress, total, length=20):
     sys.stdout.write(title + ' [' + bar + '] ' + "{:5.1f}%".format(percent))
     sys.stdout.flush()
     if percent == 100:
-        print()
+        sys.stdout.write('\n')
+        sys.stdout.flush()
 
 
 def download_url_reporthook(count, blockSize, totalSize):
@@ -109,23 +112,16 @@ class FlashChoicesCompleter(object):
 
 
 def main():
-    devices = flash_serial.get_list_devices()
+    devices = flash_dfu.get_list_devices() + flash_serial.get_list_devices()
     parser = argparse.ArgumentParser(description='BigClown Firmware Flasher')
 
     subparsers = parser.add_subparsers(dest='command', metavar='COMMAND')
 
-    subparser_list = subparsers.add_parser('help', help="show help")
+    subparsers.add_parser('update', help="update list of available firmwares")
 
     subparser_list = subparsers.add_parser('list', help="list firmwares")
     subparser_list.add_argument('--all', help='show all releases', action='store_true')
     subparser_list.add_argument('--description', help='show description', action='store_true')
-
-    subparser_search = subparsers.add_parser('search', help="search in firmwares names and descriptions")
-    subparser_search.add_argument('pattern', help='search pattern')
-    subparser_search.add_argument('--all', help='show all releases', action='store_true')
-    subparser_search.add_argument('--description', help='show description', action='store_true')
-
-    subparsers.add_parser('update', help="update list of available firmwares")
 
     subparser_flash = subparsers.add_parser('flash', help="flash firmware",
                                             usage='%(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
@@ -136,6 +132,11 @@ def main():
 
     subparsers.add_parser('devices', help="show devices")
 
+    subparser_search = subparsers.add_parser('search', help="search in firmwares names and descriptions")
+    subparser_search.add_argument('pattern', help='search pattern')
+    subparser_search.add_argument('--all', help='show all releases', action='store_true')
+    subparser_search.add_argument('--description', help='show description', action='store_true')
+
     subparser_pull = subparsers.add_parser('pull', help="pull firmware to cache",
                                            usage='%(prog)s <firmware>\n       %(prog)s <url>')
     subparser_pull.add_argument('what', help=argparse.SUPPRESS)
@@ -145,6 +146,14 @@ def main():
     subparser_create = subparsers.add_parser('create', help="create new firmware")
     subparser_create.add_argument('name', help=argparse.SUPPRESS)
     subparser_create.add_argument('--no-git', help='disable git', action='store_true')
+
+    subparser_clone = subparsers.add_parser('clone', help="download firmware to file")
+    subparser_clone.add_argument('filename', help=argparse.SUPPRESS)
+    subparser_clone.add_argument('--device', help='device',
+                                 default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
+    subparser_clone.add_argument('--length', help='length', default=196608, type=int)
+
+    subparser_list = subparsers.add_parser('help', help="show help")
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
@@ -193,6 +202,7 @@ def main():
             try:
                 flash_serial.run(args.device, filename_bin, reporthook=print_progress_bar)
             except Exception as e:
+                raise
                 print(str(e))
                 exit(1)
 
@@ -256,7 +266,8 @@ def main():
 
         os.rmdir(tmp_dir)
 
-    # Todo clone
+    elif args.command == 'clone':
+        flash_serial.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
 
 
 if __name__ == '__main__':

@@ -437,6 +437,34 @@ def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000
             reporthook('Verify', offset + read_len, length)
 
 
+def clone(device, filename, length, reporthook=None, api=None, start_address=0x08000000):
+    if api is None:
+        api = Flash_Serial(device)
+        _run_connect(api)
+
+    f = open(filename, 'wb')
+    step = 128
+    for offset in range(0, length, step):
+        read_len = length - offset
+        if read_len > step:
+            read_len = step
+
+        for i in range(4):
+            data = api.read_memory(start_address + offset, read_len)
+            verify = api.read_memory(start_address + offset, read_len)
+            if data == verify:
+                f.write(data)
+                break
+            if i == 2:
+                _run_connect(api)
+        else:
+            raise Exception('not match')
+
+        if reporthook:
+            reporthook('Clone', offset + read_len, length)
+
+    f.close()
+
 
 def run(device, filename_bin, reporthook=None):
 
