@@ -6,6 +6,7 @@ script:
   - ./script/build
 deploy:
   provider: pypi
+  skip_cleanup: true
   user: bigclownlabs
   password:
     secure: qM/nDkdjTi5hPyMnQKiAthdh0lBTl3zw5yQymwKnqFXK34REdGfelIySxCAKC/09DUgFvVg8o010Ps9U9yMi8FEze932KT0f/JYJlDOfj8uHtzAVeNdW0pWAGMsSafmBLC5s9WcT+q3Xy40WwDA0goIK5Xo2BzuFffNRyOKkOWwciP35eyxzcJF+37lYsX8hoy2ICABZnp+uOqA8XBt1A2VZoe39XNPPDf1uV8ZaAOgTLWK976srh/V0AfO/mKJYUSviyLU5t/FKevP5e5LpCRt3qSO8bQcehksMcn0HrNP3J3VuKkHlT4yKvTF3BSjGM9QDbwwtFs8h+xppOaG14CrJxI5etdx2uUUiCohJySKrLbs/3k7jJQY3nWA7QBPMRaS8oNSNjgXLD5QLZ3WcElUhy4cLEdw9yrO0PB9Shhk+aQOvx6UqZdyuOe56DBVCf+A/QSqaReD+bI6+wYKL4N/KLhRPBz0RZaRx8DR0LBPDzYf61hUYMZOvS42OjEwQQrGU41BlzbWcOe7A+Pt0flUXKtWDC6e5hn1sieT7dvcpAaYCEDQPOEPt2cerKB95kDTk9HRvarEx0zObkkhp9nfV0/p8lZx0mBOl1FnOslxIRn2SW/fOjLj8ni7zk/DKvaQ/FlHgmrK/LtW+YCVlnnO/TmnASkTmn0fn6XmbSi4=
