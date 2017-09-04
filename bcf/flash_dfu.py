@@ -1,5 +1,7 @@
 import subprocess
 
+dfu = "dfu-util"
+
 dfu_help = '''
 The device is probably not in DFU mode
     1. Make sure the USB cable is connected to your desktop (host).
@@ -11,15 +13,24 @@ The device is probably not in DFU mode
     5. Release the BOOT button.
 '''
 
+dfu_help_install = '''
+Please install dfu-util:
+sudo apt install dfu-util
+Or from https://sourceforge.net/projects/dfu-util/files/?source=navbar
+'''
 
-def run(filename_bin):
-    dfu = "dfu-util"
+
+def test():
     try:
         subprocess.check_output([dfu, "--version"])
+        return True
     except Exception:
-        print("Please install dfu-util:")
-        print("sudo apt install dfu-util")
-        print("Or from https://sourceforge.net/projects/dfu-util/files/?source=navbar")
+        return False
+
+
+def run(filename_bin):
+    if not test():
+        print(dfu_help_install)
         return False
 
     cmd = [dfu, "-s", "0x08000000:leave", "-d", "0483:df11", "-a", "0", "-D", filename_bin]
@@ -29,3 +40,23 @@ def run(filename_bin):
         print("=" * 60)
         print(dfu_help)
         return False
+
+
+def get_list_devices():
+    table = []
+    try:
+        proc = subprocess.Popen([dfu, '--list'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except Exception:
+        return table
+
+    while 1:
+        line = proc.stdout.readline()
+        if not line and proc.poll() is not None:
+            break
+        line = line.decode()
+        if line.startswith("Found DFU:"):
+            serial = line.split()[-1]
+            serial = 'dfu:' + serial[serial.find('"') + 1:-1]
+            if serial not in table:
+                table.append(serial)
+    return table
