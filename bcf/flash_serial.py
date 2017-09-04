@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import __future__
 import sys
 import logging
 import serial
@@ -16,11 +17,13 @@ try:
 except ImportError:
     fcntl = None
     bridge = None
+if sys.version_info[0] == 2:
+    import struct
 
 LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
-ACK = bytes([0x79])
-NACK = bytes([0x1F])
+ACK = b'\x79'
+NACK = b'\x1F'
 
 
 class SerialPort:
@@ -174,6 +177,9 @@ class Flash_Serial(object):
         self.ser.write([0x00, 0xff])
         self.ser.flush()
         n, bootloader_version = self._read_data(2, start_ack=True, stop_ack=False)
+        if sys.version_info[0] == 2:
+            n = ord(n)
+            bootloader_version = ord(bootloader_version)
         command = self._read_data(n, start_ack=False, stop_ack=True)
         return n, bootloader_version, command
 
@@ -199,7 +205,7 @@ class Flash_Serial(object):
         if not self.connect():
             return
 
-        sa = start_address.to_bytes(4, 'big', signed=False)
+        sa = self._int_to_bytes(start_address)
         xor = self._calculate_xor(sa)
         self.ser.write([0x11, 0xee])
         self.ser.flush()
@@ -218,7 +224,7 @@ class Flash_Serial(object):
         self.ser.write([n, 0xff ^ n])
         self.ser.flush()
 
-        if self.ser.read(3) != bytes([0x79, 0x79, 0x79]):
+        if self.ser.read(3) != b'\x79\x79\x79':
             return
 
         data = self._read_data(length, start_ack=False, stop_ack=False)
@@ -264,7 +270,7 @@ class Flash_Serial(object):
         if mod != 0:
             data += bytearray([0] * mod)
 
-        sa = start_address.to_bytes(4, 'big', signed=False)
+        sa = self._int_to_bytes(start_address)
         xor = self._calculate_xor(sa)
         data_xor = self._calculate_xor(data)
 
@@ -273,7 +279,7 @@ class Flash_Serial(object):
         self.ser.write([xor])
         self.ser.flush()
 
-        if self.ser.read(2) != bytes([0x79, 0x79]):
+        if self.ser.read(2) != b'\x79\x79':
             return
 
         length = len(data) - 1
@@ -295,7 +301,7 @@ class Flash_Serial(object):
         if not self._wait_for_ack():
             return
 
-        sa = start_address.to_bytes(4, 'big', signed=False)
+        sa = self._int_to_bytes(start_address)
         xor = self._calculate_xor(sa)
 
         self.ser.write(sa)
@@ -306,9 +312,16 @@ class Flash_Serial(object):
 
     def _calculate_xor(self, data):
         xor = 0
+        if isinstance(data, str):
+            data = map(ord, data)
         for v in data:
             xor ^= v
         return xor
+
+    def _int_to_bytes(self, value):
+        if sys.version_info[0] == 2:
+            return struct.pack('>I', value)
+        return value.to_bytes(4, 'big', signed=False)
 
     def _wait_for_ack(self, n=3):
         for i in range(n):
@@ -351,7 +364,9 @@ def erase(device, length=196608, reporthook=None, api=None):
         api = Flash_Serial(device)
         _run_connect(api)
 
-    pages = math.ceil(length / 128)
+    pages = int(math.ceil(length / 128)) + 1
+    if pages > 1536:
+        pages = 1536
 
     if reporthook:
         reporthook('Erase ', 0, pages)
@@ -420,6 +435,7 @@ def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000
 
         if reporthook:
             reporthook('Verify', offset + read_len, length)
+
 
 
 def run(device, filename_bin, reporthook=None):
