@@ -2,9 +2,9 @@
 
 # Host Application - BigClown Firmware Flasher
 
-[![Travis](https://img.shields.io/travis/bigclownlabs/bch-firmware-flasher/master.svg)](https://travis-ci.org/bigclownlabs/bch-firmware-flasher)
-[![Release](https://img.shields.io/github/release/bigclownlabs/bch-firmware-flasher.svg)](https://github.com/bigclownlabs/bch-firmware-flasher/releases)
-[![License](https://img.shields.io/github/license/bigclownlabs/bch-firmware-flasher.svg)](https://github.com/bigclownlabs/bch-firmware-flasher/blob/master/LICENSE)
+[![Travis](https://img.shields.io/travis/bigclownlabs/bch-firmware-utility/master.svg)](https://travis-ci.org/bigclownlabs/bch-firmware-utility)
+[![Release](https://img.shields.io/github/release/bigclownlabs/bch-firmware-utility.svg)](https://github.com/bigclownlabs/bch-firmware-utility/releases)
+[![License](https://img.shields.io/github/license/bigclownlabs/bch-firmware-utility.svg)](https://github.com/bigclownlabs/bch-firmware-utility/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/BigClownLabs.svg?style=social&label=Follow)](https://twitter.com/BigClownLabs)
 
 This repository contains BigClown Firmware Flasher.

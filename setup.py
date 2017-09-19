@@ -13,7 +13,7 @@ setup(
     description='BigClown firmware flasher.',
     author='BigClownLabs',
     author_email='karel.blavka@bigclown.com',
-    url='https://github.com/bigclownlabs/bc-firmware-flasher',
+    url='https://github.com/bigclownlabs/bch-firmware-utility',
     include_package_data=True,
     install_requires=requirements,
     license='MIT',
