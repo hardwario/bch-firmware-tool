@@ -162,7 +162,7 @@ def main():
 
     if not args.command or args.command == 'help':
         parser.print_help()
-        exit()
+        sys.exit()
 
     user_cache_dir = appdirs.user_cache_dir('bcf')
     repos = Github_Repos(user_cache_dir)
@@ -193,7 +193,7 @@ def main():
             firmware = repos.get_firmware(args.what)
             if not firmware:
                 print('Firmware not found, try updating first')
-                exit(1)
+                sys.exit(1)
             filename_bin = download_url(firmware['download_url'], user_cache_dir)
 
         if args.dfu:
@@ -204,7 +204,7 @@ def main():
             except Exception as e:
                 raise
                 print(str(e))
-                exit(1)
+                sys.exit(1)
 
     elif args.command == 'update':
         repos.update()
@@ -220,7 +220,7 @@ def main():
             firmware = repos.get_firmware(args.what)
             if not firmware:
                 print('Firmware not found, try updating first')
-                exit(1)
+                sys.exit(1)
             url = firmware['download_url']
         download_url(url, user_cache_dir, False)
 
@@ -234,7 +234,7 @@ def main():
 
         if os.path.exists(name):
             print('Directory already exists')
-            exit(1)
+            sys.exit(1)
 
         skeleton_zip_filename = download_url(SKELETON_URL_ZIP, user_cache_dir)
 
