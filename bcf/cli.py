@@ -124,8 +124,8 @@ def main():
     subparser_list.add_argument('--description', help='show description', action='store_true')
 
     subparser_flash = subparsers.add_parser('flash', help="flash firmware",
-                                            usage='%(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
-    subparser_flash.add_argument('what', help=argparse.SUPPRESS).completer = FlashChoicesCompleter()
+                                            usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
+    subparser_flash.add_argument('what', help=argparse.SUPPRESS, nargs='?', default="firmware.bin").completer = FlashChoicesCompleter()
     subparser_flash.add_argument('--device', help='device',
                                  default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
     subparser_flash.add_argument('--dfu', help='use dfu mode', action='store_true')
