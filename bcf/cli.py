@@ -96,64 +96,63 @@ def download_url(url, user_cache_dir, use_cache=True):
 
 
 class FlashChoicesCompleter(object):
+    def __init__(self, find_bin):
+        self._find_bin = find_bin
     def __call__(self, **kwargs):
         user_cache_dir = appdirs.user_cache_dir('bcf')
         repos = Github_Repos(user_cache_dir)
         # search = kwargs.get('prefix', None)
-        return repos.get_firmwares()
-
-
-class FlashChoicesCompleter(object):
-    def __call__(self, **kwargs):
-        user_cache_dir = appdirs.user_cache_dir('bcf')
-        repos = Github_Repos(user_cache_dir)
-        # search = kwargs.get('prefix', None)
-        return repos.get_firmwares() + glob.glob('*.bin')
+        firmwares = repos.get_firmwares()
+        if self._find_bin:
+            firmwares += glob.glob('*.bin')
+        return firmwares
 
 
 def main():
     devices = flash_dfu.get_list_devices() + flash_serial.get_list_devices()
     parser = argparse.ArgumentParser(description='BigClown Firmware Flasher')
 
-    subparsers = parser.add_subparsers(dest='command', metavar='COMMAND')
+    subparsers = {}
+    subparser = parser.add_subparsers(dest='command', metavar='COMMAND')
 
-    subparsers.add_parser('update', help="update list of available firmwares")
+    subparsers['update'] = subparser.add_parser('update', help="update list of available firmwares")
 
-    subparser_list = subparsers.add_parser('list', help="list firmwares")
-    subparser_list.add_argument('--all', help='show all releases', action='store_true')
-    subparser_list.add_argument('--description', help='show description', action='store_true')
+    subparsers['list'] = subparser.add_parser('list', help="list firmwares")
+    subparsers['list'].add_argument('--all', help='show all releases', action='store_true')
+    subparsers['list'].add_argument('--description', help='show description', action='store_true')
 
-    subparser_flash = subparsers.add_parser('flash', help="flash firmware",
+    subparsers['flash'] = subparser.add_parser('flash', help="flash firmware",
                                             usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
-    subparser_flash.add_argument('what', help=argparse.SUPPRESS, nargs='?', default="firmware.bin").completer = FlashChoicesCompleter()
-    subparser_flash.add_argument('--device', help='device',
+    subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?', default="firmware.bin").completer = FlashChoicesCompleter(True)
+    subparsers['flash'].add_argument('--device', help='device',
                                  default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
-    subparser_flash.add_argument('--dfu', help='use dfu mode', action='store_true')
+    subparsers['flash'].add_argument('--dfu', help='use dfu mode', action='store_true')
 
-    subparsers.add_parser('devices', help="show devices")
+    subparsers['devices'] = subparser.add_parser('devices', help="show devices")
 
-    subparser_search = subparsers.add_parser('search', help="search in firmwares names and descriptions")
-    subparser_search.add_argument('pattern', help='search pattern')
-    subparser_search.add_argument('--all', help='show all releases', action='store_true')
-    subparser_search.add_argument('--description', help='show description', action='store_true')
+    subparsers['search'] = subparser.add_parser('search', help="search in firmwares names and descriptions")
+    subparsers['search'].add_argument('pattern', help='search pattern')
+    subparsers['search'].add_argument('--all', help='show all releases', action='store_true')
+    subparsers['search'].add_argument('--description', help='show description', action='store_true')
 
-    subparser_pull = subparsers.add_parser('pull', help="pull firmware to cache",
+    subparsers['pull'] = subparser.add_parser('pull', help="pull firmware to cache",
                                            usage='%(prog)s <firmware>\n       %(prog)s <url>')
-    subparser_pull.add_argument('what', help=argparse.SUPPRESS)
+    subparsers['pull'].add_argument('what', help=argparse.SUPPRESS).completer = FlashChoicesCompleter(False)
 
-    subparsers.add_parser('clean', help="clean cache")
+    subparsers['clean'] = subparser.add_parser('clean', help="clean cache")
 
-    subparser_create = subparsers.add_parser('create', help="create new firmware")
-    subparser_create.add_argument('name', help=argparse.SUPPRESS)
-    subparser_create.add_argument('--no-git', help='disable git', action='store_true')
+    subparsers['create'] = subparser.add_parser('create', help="create new firmware")
+    subparsers['create'].add_argument('name', help=argparse.SUPPRESS)
+    subparsers['create'].add_argument('--no-git', help='disable git', action='store_true')
 
-    subparser_clone = subparsers.add_parser('clone', help="download firmware to file")
-    subparser_clone.add_argument('filename', help=argparse.SUPPRESS)
-    subparser_clone.add_argument('--device', help='device',
+    subparsers['clone'] = subparser.add_parser('clone', help="download firmware to file")
+    subparsers['clone'].add_argument('filename', help=argparse.SUPPRESS)
+    subparsers['clone'].add_argument('--device', help='device',
                                  default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
-    subparser_clone.add_argument('--length', help='length', default=196608, type=int)
+    subparsers['clone'].add_argument('--length', help='length', default=196608, type=int)
 
-    subparser_list = subparsers.add_parser('help', help="show help")
+    subparser_help = subparser.add_parser('help', help="show help")
+    subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
@@ -161,7 +160,10 @@ def main():
     args = parser.parse_args()
 
     if not args.command or args.command == 'help':
-        parser.print_help()
+        if args.what:
+            subparsers[args.what].print_help()
+        else:
+            parser.print_help()
         sys.exit()
 
     user_cache_dir = appdirs.user_cache_dir('bcf')
