@@ -161,7 +161,11 @@ def main():
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
-    if not args.command or args.command == 'help':
+    if not args.command:
+        parser.print_help()
+        sys.exit()
+
+    if args.command == 'help':
         if args.what:
             subparsers[args.what].print_help()
         else:
