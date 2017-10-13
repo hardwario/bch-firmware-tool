@@ -93,7 +93,15 @@ class Github_Repos:
 
     def api_get(self, url):
         response = urlopen(url)
-        return json.loads(response.read().decode('utf-8'))
+        v = response.read()
+        try:
+            return json.loads(v.decode('utf-8'))
+        except ValueError as e:
+            print(e)
+            print("-=[begin:server returned:")
+            print(v)
+            print("-=[end:server returned:")
+            return json.loads("{}".decode('utf-8'))
 
     def update(self):
         save = False
