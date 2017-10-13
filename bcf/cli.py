@@ -98,6 +98,7 @@ def download_url(url, user_cache_dir, use_cache=True):
 class FlashChoicesCompleter(object):
     def __init__(self, find_bin):
         self._find_bin = find_bin
+
     def __call__(self, **kwargs):
         user_cache_dir = appdirs.user_cache_dir('bcf')
         repos = Github_Repos(user_cache_dir)
@@ -122,10 +123,11 @@ def main():
     subparsers['list'].add_argument('--description', help='show description', action='store_true')
 
     subparsers['flash'] = subparser.add_parser('flash', help="flash firmware",
-                                            usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
-    subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?', default="firmware.bin").completer = FlashChoicesCompleter(True)
+                                               usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
+    subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?',
+                                     default="firmware.bin").completer = FlashChoicesCompleter(True)
     subparsers['flash'].add_argument('--device', help='device',
-                                 default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
+                                     default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
     subparsers['flash'].add_argument('--dfu', help='use dfu mode', action='store_true')
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
@@ -136,7 +138,7 @@ def main():
     subparsers['search'].add_argument('--description', help='show description', action='store_true')
 
     subparsers['pull'] = subparser.add_parser('pull', help="pull firmware to cache",
-                                           usage='%(prog)s <firmware>\n       %(prog)s <url>')
+                                              usage='%(prog)s <firmware>\n       %(prog)s <url>')
     subparsers['pull'].add_argument('what', help=argparse.SUPPRESS).completer = FlashChoicesCompleter(False)
 
     subparsers['clean'] = subparser.add_parser('clean', help="clean cache")
@@ -148,7 +150,7 @@ def main():
     subparsers['clone'] = subparser.add_parser('clone', help="download firmware to file")
     subparsers['clone'].add_argument('filename', help=argparse.SUPPRESS)
     subparsers['clone'].add_argument('--device', help='device',
-                                 default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
+                                     default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
     subparsers['clone'].add_argument('--length', help='length', default=196608, type=int)
 
     subparser_help = subparser.add_parser('help', help="show help")
