@@ -3,7 +3,7 @@
 
 from setuptools import setup, find_packages
 
-requirements = ['appdirs', 'argcomplete', 'pyserial']
+requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0']
 
 setup(
     name='bcf',
@@ -11,9 +11,9 @@ setup(
     package_dir={'': '.'},
     version='@@VERSION@@',
     description='BigClown firmware flasher.',
-    author='BigClownLabs',
+    author='Hardwario s.r.o.',
     author_email='karel.blavka@bigclown.com',
-    url='https://github.com/bigclownlabs/bch-firmware-utility',
+    url='https://github.com/bigclownlabs/bch-firmware-tool',
     include_package_data=True,
     install_requires=requirements,
     license='MIT',
@@ -34,6 +34,6 @@ setup(
         bcf=bcf.cli:main
     ''',
     long_description='''
-BigClown firmware flasher.
+BigClown Firmware Tool.
 '''
 )
