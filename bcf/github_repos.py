@@ -31,7 +31,7 @@ class Github_Repos:
     def get_updated(self):
         return self._updated
 
-    def get_firmwares_table(self, search='', all=False, description=False):
+    def get_firmware_table(self, search='', all=False, description=False):
         table = []
         names = list(self._repos.keys())
         names.sort()
@@ -50,7 +50,7 @@ class Github_Repos:
                         break
         return table
 
-    def get_firmwares(self):
+    def get_firmware_list(self):
         table = []
         names = list(self._repos.keys())
         names.sort()

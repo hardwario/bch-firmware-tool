@@ -103,7 +103,7 @@ class FlashChoicesCompleter(object):
         user_cache_dir = appdirs.user_cache_dir('bcf')
         repos = Github_Repos(user_cache_dir)
         # search = kwargs.get('prefix', None)
-        firmwares = repos.get_firmwares()
+        firmwares = repos.get_firmware_list()
         if self._find_bin:
             firmwares += glob.glob('*.bin')
         return firmwares
@@ -111,14 +111,14 @@ class FlashChoicesCompleter(object):
 
 def main():
     devices = flash_dfu.get_list_devices() + flash_serial.get_list_devices()
-    parser = argparse.ArgumentParser(description='BigClown Firmware Flasher')
+    parser = argparse.ArgumentParser(description='BigClown Firmware Tool')
 
     subparsers = {}
     subparser = parser.add_subparsers(dest='command', metavar='COMMAND')
 
-    subparsers['update'] = subparser.add_parser('update', help="update list of available firmwares")
+    subparsers['update'] = subparser.add_parser('update', help="update list of available firmware")
 
-    subparsers['list'] = subparser.add_parser('list', help="list firmwares")
+    subparsers['list'] = subparser.add_parser('list', help="list firmware")
     subparsers['list'].add_argument('--all', help='show all releases', action='store_true')
     subparsers['list'].add_argument('--description', help='show description', action='store_true')
 
@@ -132,7 +132,7 @@ def main():
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
 
-    subparsers['search'] = subparser.add_parser('search', help="search in firmwares names and descriptions")
+    subparsers['search'] = subparser.add_parser('search', help="search in firmware names and descriptions")
     subparsers['search'].add_argument('pattern', help='search pattern')
     subparsers['search'].add_argument('--all', help='show all releases', action='store_true')
     subparsers['search'].add_argument('--description', help='show description', action='store_true')
@@ -147,11 +147,11 @@ def main():
     subparsers['create'].add_argument('name', help=argparse.SUPPRESS)
     subparsers['create'].add_argument('--no-git', help='disable git', action='store_true')
 
-    subparsers['clone'] = subparser.add_parser('clone', help="download firmware to file")
-    subparsers['clone'].add_argument('filename', help=argparse.SUPPRESS)
-    subparsers['clone'].add_argument('--device', help='device',
+    subparsers['read'] = subparser.add_parser('read', help="download firmware to file")
+    subparsers['read'].add_argument('filename', help=argparse.SUPPRESS)
+    subparsers['read'].add_argument('--device', help='device',
                                      default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
-    subparsers['clone'].add_argument('--length', help='length', default=196608, type=int)
+    subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
 
     subparser_help = subparser.add_parser('help', help="show help")
     subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
@@ -181,9 +181,9 @@ def main():
         #     labels.append('description')
 
         if args.command == 'search':
-            rows = repos.get_firmwares_table(search=args.pattern, all=args.all, description=args.description)
+            rows = repos.get_firmware_table(search=args.pattern, all=args.all, description=args.description)
         else:
-            rows = repos.get_firmwares_table(all=args.all, description=args.description)
+            rows = repos.get_firmware_table(all=args.all, description=args.description)
 
         if rows:
             print_table([], rows)
@@ -274,7 +274,7 @@ def main():
 
         os.rmdir(tmp_dir)
 
-    elif args.command == 'clone':
+    elif args.command == 'read':
         flash_serial.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
 
 

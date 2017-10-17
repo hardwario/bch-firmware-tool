@@ -10,7 +10,7 @@ setup(
     packages=["bcf"],
     package_dir={'': '.'},
     version='@@VERSION@@',
-    description='BigClown firmware flasher.',
+    description='BigClown Firmware Tool.',
     author='Hardwario s.r.o.',
     author_email='karel.blavka@bigclown.com',
     url='https://github.com/bigclownlabs/bch-firmware-tool',
