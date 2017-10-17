@@ -2,6 +2,7 @@
 import __future__
 import sys
 import logging
+import platform
 import serial
 import serial.tools.list_ports
 from time import sleep, time
@@ -68,6 +69,10 @@ class SerialPort:
     def _speed_up(self):
         if not fcntl:
             return
+        if platform.system() != 'Linux':
+            return
+
+        logging.debug('_speed_up')
 
         TIOCGSERIAL = 0x0000541E
         TIOCSSERIAL = 0x0000541F
@@ -94,11 +99,13 @@ class SerialPort:
                         ("iomap_base", c_ulong)]
 
         buf = serial_struct()
-        fcntl.ioctl(self.ser.fileno(), TIOCGSERIAL, buf)
-        buf.flags |= ASYNC_LOW_LATENCY
-        fcntl.ioctl(self.ser.fileno(), TIOCSSERIAL, buf)
 
-        logging.debug('_speed_up')
+        try:
+            fcntl.ioctl(self.ser.fileno(), TIOCGSERIAL, buf)
+            buf.flags |= ASYNC_LOW_LATENCY
+            fcntl.ioctl(self.ser.fileno(), TIOCSSERIAL, buf)
+        except Exception as e:
+            logging.exception(e)
 
     def reset_sequence(self):
         self.ser.rts = True
@@ -492,9 +499,10 @@ def get_list_devices():
             if 'VID:PID=0483:5740' in p[2]:
                 table.append(p[0])
         else:
-            if (p.vid == 0x0403 and p.pid == 0x6001) or (p.vid == 0x0403 and p.pid == 0x6015):
+            if p.vid == 0x0403 and p.pid == 0x6001:
                 table.append(p.device)
-
+            if p.vid == 0x0403 and p.pid == 0x6015 and p.serial_number.startswith("bc-usb-dongle"):
+                table.append(p.device)
     if bridge:
         for b in bridge.get_list():
             table.append(b[1])

@@ -150,7 +150,7 @@ def main():
     subparsers['read'] = subparser.add_parser('read', help="download firmware to file")
     subparsers['read'].add_argument('filename', help=argparse.SUPPRESS)
     subparsers['read'].add_argument('--device', help='device',
-                                     default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
+                                    default="/dev/ttyUSB0" if not devices else devices[0], choices=devices)
     subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
 
     subparser_help = subparser.add_parser('help', help="show help")
