@@ -501,7 +501,7 @@ def get_list_devices():
         else:
             if p.vid == 0x0403 and p.pid == 0x6001:
                 table.append(p.device)
-            if p.vid == 0x0403 and p.pid == 0x6015 and p.serial_number.startswith("bc-usb-dongle"):
+            if p.vid == 0x0403 and p.pid == 0x6015 and (not p.serial_number or p.serial_number.startswith("bc-usb-dongle")):
                 table.append(p.device)
     if bridge:
         for b in bridge.get_list():
