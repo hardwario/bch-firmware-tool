@@ -40,7 +40,13 @@ class Github_Repos:
             if not search or search in name or (description and search in repo['description']):
                 for release in repo['releases']:
                     for i, firmware in enumerate(release['firmwares']):
-                        n = 'bigclownlabs/' + name + ':' + firmware['name'] + ':' + release['tag_name']
+                        if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
+                            tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
+                        else:
+                            tmp = name + ':' + firmware['name']
+
+                        n = 'bigclownlabs/' + tmp + ':' + release['tag_name']
+
                         row = [n]
 
                         if description:
@@ -57,8 +63,12 @@ class Github_Repos:
         for name in names:
             repo = self._repos[name]
             for release in repo['releases']:
-                for i, firmware in enumerate(release['firmwares']):
-                    table.append('bigclownlabs/' + name + ':' + firmware['name'])
+                for firmware in release['firmwares']:
+                    if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
+                        tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
+                        table.append('bigclownlabs/' + tmp + ':latest')
+                    else:
+                        table.append('bigclownlabs/' + name + ':' + firmware['name'])
                 break
         return table
 
@@ -68,27 +78,38 @@ class Github_Repos:
         if len(name) != 2 or name[0] != 'bigclownlabs':
             return
 
+        if name[1].endswith(".bin"):
+            name[1] += ":latest"
+
         name = name[1].split(':')
 
-        tag_name = None
         if len(name) == 2:
-            tag_name = 'latest'
+            tag_name = name[1]
+            firmware_name = name[0]
+
+            for name in self._repos:
+                if firmware_name.startswith(name):
+                    repo = self._repos[name]
+                    for release in repo['releases']:
+                        for firmware in release['firmwares']:
+                            tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
+                            if tmp == firmware_name and (tag_name == 'latest' or tag_name == release['tag_name']):
+                                return firmware
+
         elif len(name) == 3:
             tag_name = name[2]
-        else:
-            return
+            firmware_name = name[1]
+            repo = self._repos.get(name[0], None)
+            if repo is None:
+                return
 
-        firmware_name = name[1]
-
-        repo = self._repos.get(name[0], None)
-        if repo is None:
-            return
-
-        for release in repo['releases']:
-            if tag_name == 'latest' or tag_name == release['tag_name']:
-                for firmware in release['firmwares']:
-                    if firmware['name'] == firmware_name:
-                        return firmware
+            for release in repo['releases']:
+                if tag_name == 'latest' or tag_name == release['tag_name']:
+                    for firmware in release['firmwares']:
+                        if firmware['name'] == firmware_name:
+                            return firmware
+                    return
+            else:
                 return
 
     def api_get(self, url):
