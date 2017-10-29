@@ -224,15 +224,21 @@ def main():
             print(device)
 
     elif args.command == 'pull':
-        if args.what.startswith('http'):
-            url = args.what
+        if args.what == 'last':
+            for name in repos.get_firmware_list():
+                firmware = repos.get_firmware(name)
+                print('pull', name)
+                download_url(firmware['download_url'], user_cache_dir, True)
+                print()
+
+        elif args.what.startswith('http'):
+            download_url(args.what, user_cache_dir, True)
         else:
             firmware = repos.get_firmware(args.what)
             if not firmware:
-                print('Firmware not found, try updating first')
+                print('Firmware not found, try updating first, command: bcf update')
                 sys.exit(1)
-            url = firmware['download_url']
-        download_url(url, user_cache_dir, False)
+            download_url(firmware['download_url'], user_cache_dir, True)
 
     elif args.command == 'clean':
         repos.clear()
