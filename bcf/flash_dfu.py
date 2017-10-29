@@ -8,7 +8,7 @@ The device is probably not in DFU mode
     2. Press the BOOT button on Core Module and keep it pressed.
             BOOT button is on the right side and is marked with letter "B".
     3. Press the RESET button on Core Module while BOOT button is still held.
-            BOOT button is on the left side and is marked with letter "R".
+            RESET button is on the left side and is marked with letter "R".
     4. Release the RESET button.
     5. Release the BOOT button.
 '''
