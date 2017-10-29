@@ -31,7 +31,7 @@ class Github_Repos:
     def get_updated(self):
         return self._updated
 
-    def get_firmware_table(self, search='', all=False, description=False):
+    def get_firmware_table(self, search='', all=False, description=False, show_pre_release=False):
         table = []
         names = list(self._repos.keys())
         names.sort()
@@ -39,6 +39,10 @@ class Github_Repos:
             repo = self._repos[name]
             if not search or search in name or (description and search in repo['description']):
                 for release in repo['releases']:
+
+                    if release.get('prerelease', False) and not show_pre_release:
+                        continue
+
                     for i, firmware in enumerate(release['firmwares']):
                         if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
                             tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
@@ -56,19 +60,23 @@ class Github_Repos:
                         break
         return table
 
-    def get_firmware_list(self):
+    def get_firmware_list(self, show_pre_release=False):
         table = []
         names = list(self._repos.keys())
         names.sort()
         for name in names:
             repo = self._repos[name]
             for release in repo['releases']:
+
+                if release.get('prerelease', False) and not show_pre_release:
+                    continue
+
                 for firmware in release['firmwares']:
                     if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
                         tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
                         table.append('bigclownlabs/' + tmp + ':latest')
                     else:
-                        table.append('bigclownlabs/' + name + ':' + firmware['name'])
+                        table.append('bigclownlabs/' + name + ':' + firmware['name'] + ':latest')
                 break
         return table
 
@@ -104,7 +112,7 @@ class Github_Repos:
                 return
 
             for release in repo['releases']:
-                if tag_name == 'latest' or tag_name == release['tag_name']:
+                if (tag_name == 'latest' and not release.get('prerelease', False)) or tag_name == release['tag_name']:
                     for firmware in release['firmwares']:
                         if firmware['name'] == firmware_name:
                             return firmware
@@ -156,14 +164,16 @@ class Github_Repos:
                                         release = {
                                             'tag_name': gh_release['tag_name'],
                                             'published_at': gh_release['published_at'],
-                                            'firmwares': []
+                                            'firmwares': [],
+                                            'prerelease': gh_release['prerelease']
                                         }
 
                                     release['firmwares'].append({
                                         'id': str(gh_assets['id']),
                                         'download_url': gh_assets['browser_download_url'],
                                         'size': gh_assets['size'],
-                                        'name': gh_assets['name']
+                                        'name': gh_assets['name'],
+
                                     })
 
                                     if repo:

@@ -121,6 +121,7 @@ def main():
     subparsers['list'] = subparser.add_parser('list', help="list firmware")
     subparsers['list'].add_argument('--all', help='show all releases', action='store_true')
     subparsers['list'].add_argument('--description', help='show description', action='store_true')
+    subparsers['list'].add_argument('--show-pre-release', help='show pre-release version', action='store_true')
 
     subparsers['flash'] = subparser.add_parser('flash', help="flash firmware",
                                                usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
@@ -136,6 +137,7 @@ def main():
     subparsers['search'].add_argument('pattern', help='search pattern')
     subparsers['search'].add_argument('--all', help='show all releases', action='store_true')
     subparsers['search'].add_argument('--description', help='show description', action='store_true')
+    subparsers['search'].add_argument('--show-pre-release', help='show pre-release version', action='store_true')
 
     subparsers['pull'] = subparser.add_parser('pull', help="pull firmware to cache",
                                               usage='%(prog)s <firmware>\n       %(prog)s <url>')
@@ -180,10 +182,10 @@ def main():
         # if args.description:
         #     labels.append('description')
 
-        if args.command == 'search':
-            rows = repos.get_firmware_table(search=args.pattern, all=args.all, description=args.description)
-        else:
-            rows = repos.get_firmware_table(all=args.all, description=args.description)
+        rows = repos.get_firmware_table(search=args.pattern if args.command == 'search' else None,
+                                        all=args.all,
+                                        description=args.description,
+                                        show_pre_release=args.show_pre_release)
 
         if rows:
             print_table([], rows)
