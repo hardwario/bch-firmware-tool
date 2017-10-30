@@ -29,9 +29,9 @@ except ImportError:  # Python 3
     from urllib.request import urlretrieve
 
 __version__ = '@@VERSION@@'
-SKELETON_URL_ZIP = 'https://github.com/bigclownlabs/bcf-skeleton-core-module/archive/master.zip'
-SDK_URL_ZIP = 'https://github.com/bigclownlabs/bcf-sdk-core-module/archive/master.zip'
-SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk-core-module.git'
+SKELETON_URL_ZIP = 'https://github.com/bigclownlabs/bcf-skeleton/archive/master.zip'
+SDK_URL_ZIP = 'https://github.com/bigclownlabs/bcf-sdk/archive/master.zip'
+SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
 
 
 def print_table(labels, rows):
