@@ -175,6 +175,7 @@ def main():
         sys.exit()
 
     user_cache_dir = appdirs.user_cache_dir('bcf')
+    print("Using cache dir :", user_cache_dir)
     repos = Github_Repos(user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
