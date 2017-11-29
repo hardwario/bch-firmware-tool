@@ -11,7 +11,7 @@ setup(
     package_dir={'': '.'},
     version='@@VERSION@@',
     description='BigClown Firmware Tool.',
-    author='Hardwario s.r.o.',
+    author='HARDWARIO s.r.o.',
     author_email='karel.blavka@bigclown.com',
     url='https://github.com/bigclownlabs/bch-firmware-tool',
     include_package_data=True,
@@ -20,7 +20,7 @@ setup(
     zip_safe=False,
     keywords=['BigClown', 'bcf', 'firmware', 'flasher'],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
