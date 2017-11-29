@@ -129,7 +129,12 @@ class Flash_Serial(object):
         if bridge and 'hidraw' in device:
             self.ser = bridge.SerialPort(device)
         else:
-            self.ser = SerialPort(device)
+            try:
+                self.ser = SerialPort(device)
+            except serial.serialutil.SerialException as e:
+                if e.errno == 2:
+                    raise Exception('Could not open port %s' % device)
+                raise e
 
     def connect(self):
         if not self._connect:

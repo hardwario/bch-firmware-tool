@@ -224,8 +224,9 @@ def main():
             try:
                 flash_serial.run(args.device, filename_bin, reporthook=print_progress_bar)
             except Exception as e:
-                raise
-                print(str(e))
+                print(e)
+                if os.getenv('DEBUG', False):
+                    raise e
                 sys.exit(1)
 
     elif args.command == 'update':
@@ -264,6 +265,7 @@ def main():
             sys.exit(1)
 
         skeleton_zip_filename = download_url(SKELETON_URL_ZIP, user_cache_dir)
+        print()
 
         tmp_dir = tempfile.mkdtemp()
 
