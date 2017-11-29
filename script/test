@@ -7,3 +7,5 @@ set -eu
 einfo 'Running Python linter'
 # E501 line too long
 python3 -m pycodestyle --ignore=E501 bcf
+
+python3 setup.py test
