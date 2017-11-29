@@ -109,8 +109,20 @@ class FlashChoicesCompleter(object):
         return firmwares
 
 
+def command_devices(verbose=False, include_links=False):
+    if os.name == 'nt' or sys.platform == 'win32':
+        from serial.tools.list_ports_windows import comports
+    elif os.name == 'posix':
+        from serial.tools.list_ports_posix import comports
+
+    for port, desc, hwid in sorted(comports(include_links=include_links)):
+        sys.stdout.write("{:20}\n".format(port))
+        if verbose:
+            sys.stdout.write("    desc: {}\n".format(desc))
+            sys.stdout.write("    hwid: {}\n".format(hwid))
+
+
 def main():
-    devices = flash_dfu.get_list_devices() + flash_serial.get_list_devices()
     parser = argparse.ArgumentParser(description='BigClown Firmware Tool')
 
     subparsers = {}
@@ -127,11 +139,12 @@ def main():
                                                usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
     subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?',
                                      default="firmware.bin").completer = FlashChoicesCompleter(True)
-    subparsers['flash'].add_argument('--device', help='device',
-                                     default="/dev/ttyUSB0" if not devices else devices[0], choices=devices if devices else None)
+    subparsers['flash'].add_argument('--device', help='device', required='--dfu' not in sys.argv)
     subparsers['flash'].add_argument('--dfu', help='use dfu mode', action='store_true')
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
+    subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
+    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
 
     subparsers['search'] = subparser.add_parser('search', help="search in firmware names and descriptions")
     subparsers['search'].add_argument('pattern', help='search pattern')
@@ -151,8 +164,7 @@ def main():
 
     subparsers['read'] = subparser.add_parser('read', help="download firmware to file")
     subparsers['read'].add_argument('filename', help=argparse.SUPPRESS)
-    subparsers['read'].add_argument('--device', help='device',
-                                    default="/dev/ttyUSB0" if not devices else devices[0], choices=devices if devices else None)
+    subparsers['read'].add_argument('--device', help='device', required=True)
     subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
 
     subparser_help = subparser.add_parser('help', help="show help")
@@ -220,8 +232,7 @@ def main():
         repos.update()
 
     elif args.command == 'devices':
-        for device in devices:
-            print(device)
+        command_devices(verbose=args.verbose, include_links=args.include_links)
 
     elif args.command == 'pull':
         if args.what == 'last':

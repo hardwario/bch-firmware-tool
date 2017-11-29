@@ -495,18 +495,10 @@ def run(device, filename_bin, reporthook=None):
 def get_list_devices():
     table = []
     for p in serial.tools.list_ports.comports():
-        if type(p) == tuple:  # for turris
-            if 'VID:PID=0483:5740' in p[2]:
-                table.append(p[0])
-        else:
-            if p.vid == 0x0403 and p.pid == 0x6001:
-                table.append(p.device)
-            if p.vid == 0x0403 and p.pid == 0x6015 and (not p.serial_number or p.serial_number.startswith("bc-usb-dongle")):
-                table.append(p.device)
+        table.append(p.device)
     if bridge:
         for b in bridge.get_list():
             table.append(b[1])
-
     return table
 
 
