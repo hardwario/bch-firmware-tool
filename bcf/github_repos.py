@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import os
 import json
 
@@ -142,8 +144,8 @@ class Github_Repos:
             for gh_repo in gh_repos:
                 if gh_repo['name'].startswith('bcf') and gh_repo['name'] != 'bcf-sdk-core-module':
 
-                    repo = self._repos.get(gh_repo['name'], {'pushed_at': None, 'releases': [{'tag_name': None}]})
-                    if repo['pushed_at'] != gh_repo['pushed_at']:
+                    repo = self._repos.get(gh_repo['name'], {'releases': [{'tag_name': None}]})
+                    if repo.get('pushed_at', None) != gh_repo['pushed_at']:
 
                         print('update data for repo', 'bigclownlabs/' + gh_repo['name'])
 
@@ -192,7 +194,7 @@ class Github_Repos:
             with open(self._cache_repos, 'w') as fp:
                 json.dump(self._repos, fp, sort_keys=True, indent=2)
 
-            print('save to ', self._cache_repos)
+            print('save to', self._cache_repos)
 
     def clear(self):
         self._repos = {}

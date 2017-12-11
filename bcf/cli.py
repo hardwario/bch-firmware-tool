@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 import __future__
 import argcomplete
@@ -14,14 +15,8 @@ import shutil
 import platform
 
 import appdirs
-try:
-    from .github_repos import Github_Repos
-    from . import flash_dfu
-    from . import flash_serial
-except Exception:
-    from github_repos import Github_Repos
-    import flash_dfu
-    import flash_serial
+from .github_repos import Github_Repos
+from . import flasher
 
 try:
     from urllib import urlretrieve
@@ -218,11 +213,11 @@ def main():
                 sys.exit(1)
             filename_bin = download_url(firmware['download_url'], user_cache_dir)
 
-        if args.dfu:
-            flash_dfu.run(filename_bin)
-        else:
             try:
-                flash_serial.run(args.device, filename_bin, reporthook=print_progress_bar)
+                sys.exit(0 if flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu) else 1)
+            except KeyboardInterrupt as e:
+                print("")
+                sys.exit(1)
             except Exception as e:
                 print(e)
                 if os.getenv('DEBUG', False):
@@ -296,7 +291,7 @@ def main():
         os.rmdir(tmp_dir)
 
     elif args.command == 'read':
-        flash_serial.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
+        flasher.uart.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
 
 
 if __name__ == '__main__':
