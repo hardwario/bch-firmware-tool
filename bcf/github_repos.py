@@ -39,27 +39,30 @@ class Github_Repos:
         names.sort()
         for name in names:
             repo = self._repos[name]
-            if not search or search in name or (description and search in repo['description']):
-                for release in repo['releases']:
+            for release in repo['releases']:
 
-                    if release.get('prerelease', False) and not show_pre_release:
+                if release.get('prerelease', False) and not show_pre_release:
+                    continue
+
+                for i, firmware in enumerate(release['firmwares']):
+                    if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
+                        tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
+                    else:
+                        tmp = name + ':' + firmware['name']
+
+                    n = 'bigclownlabs/' + tmp + ':' + release['tag_name']
+
+                    row = [n]
+
+                    if description:
+                        row.append(repo['description'])
+
+                    if search and search not in n and search not in repo['description']:
                         continue
 
-                    for i, firmware in enumerate(release['firmwares']):
-                        if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
-                            tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
-                        else:
-                            tmp = name + ':' + firmware['name']
-
-                        n = 'bigclownlabs/' + tmp + ':' + release['tag_name']
-
-                        row = [n]
-
-                        if description:
-                            row.append(repo['description'])
-                        table.append(row)
-                    if not all:
-                        break
+                    table.append(row)
+                if not all:
+                    break
         return table
 
     def get_firmware_list(self, show_pre_release=False):

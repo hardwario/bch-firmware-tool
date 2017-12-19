@@ -196,8 +196,10 @@ def main():
 
         if rows:
             print_table([], rows)
-        else:
+        elif args.command == 'list':
             print('Nothing found, try updating first')
+        else:
+            print('Nothing found')
 
     elif args.command == 'flash':
         if args.what.startswith('http'):
@@ -213,16 +215,16 @@ def main():
                 sys.exit(1)
             filename_bin = download_url(firmware['download_url'], user_cache_dir)
 
-            try:
-                sys.exit(0 if flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu) else 1)
-            except KeyboardInterrupt as e:
-                print("")
-                sys.exit(1)
-            except Exception as e:
-                print(e)
-                if os.getenv('DEBUG', False):
-                    raise e
-                sys.exit(1)
+        try:
+            sys.exit(0 if flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu) else 1)
+        except KeyboardInterrupt as e:
+            print("")
+            sys.exit(1)
+        except Exception as e:
+            print(e)
+            if os.getenv('DEBUG', False):
+                raise e
+            sys.exit(1)
 
     elif args.command == 'update':
         repos.update()
