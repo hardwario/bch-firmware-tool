@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+from datetime import datetime, timedelta
 
 try:
     from urllib import urlopen, urlretrieve
@@ -145,9 +146,10 @@ class Github_Repos:
             if not gh_repos:
                 break
             for gh_repo in gh_repos:
-                if gh_repo['name'].startswith('bcf') and gh_repo['name'] != 'bcf-sdk-core-module':
+                if gh_repo['name'].startswith('bcf') and gh_repo['name'] not in ('bcf-skeleton', 'bcf-sdk'):
 
                     repo = self._repos.get(gh_repo['name'], {'releases': [{'tag_name': None}]})
+
                     if repo.get('pushed_at', None) != gh_repo['pushed_at']:
 
                         print('update data for repo', 'bigclownlabs/' + gh_repo['name'])
@@ -155,6 +157,7 @@ class Github_Repos:
                         new_repo = {
                             'name': gh_repo['name'],
                             'pushed_at': gh_repo['pushed_at'],
+                            'updated_at': gh_repo['updated_at'],
                             'description': gh_repo['description'],
                             'tag': None
                         }
@@ -187,11 +190,19 @@ class Github_Repos:
                             if release:
                                 releases.append(release)
 
+                        new_repo['releases'] = releases
+
                         if releases:
                             if releases[0]['tag_name'] != repo['releases'][0]['tag_name']:
-                                new_repo['releases'] = releases
                                 self._repos[gh_repo['name']] = new_repo
                                 save = True
+                        else:
+                            pushed_at = datetime.strptime(gh_repo['pushed_at'], '%Y-%m-%dT%H:%M:%SZ')
+                            updated_at = datetime.strptime(gh_repo['updated_at'], '%Y-%m-%dT%H:%M:%SZ')
+                            if datetime.now() - pushed_at > timedelta(days=1) and datetime.now() - updated_at > timedelta(days=1):
+                                self._repos[gh_repo['name']] = new_repo
+                                save = True
+
             page += 1
         if save:
             with open(self._cache_repos, 'w') as fp:
