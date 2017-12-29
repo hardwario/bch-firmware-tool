@@ -13,6 +13,7 @@ import tempfile
 import zipfile
 import shutil
 import platform
+import subprocess
 
 import appdirs
 from .github_repos import Github_Repos
@@ -117,6 +118,49 @@ def command_devices(verbose=False, include_links=False):
             sys.stdout.write("    hwid: {}\n".format(hwid))
 
 
+def command_flash(what, device, dfu, repos, user_cache_dir):
+    if what.startswith('http'):
+        filename_bin = download_url(what, user_cache_dir)
+
+    elif os.path.exists(what) and os.path.isfile(what):
+        filename_bin = what
+
+    else:
+        firmware = repos.get_firmware(what)
+        if not firmware:
+            print('Firmware not found, try updating first')
+            sys.exit(1)
+        filename_bin = download_url(firmware['download_url'], user_cache_dir)
+
+    try:
+        sys.exit(0 if flasher.flash(filename_bin, device, reporthook=print_progress_bar, use_dfu=dfu) else 1)
+    except KeyboardInterrupt as e:
+        print("")
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        if isinstance(e, flasher.serialport.error.ErrorLockDevice):
+            print("TIP: Maybe the bcg service is running - you need to stop it first.")
+            if os.path.exists("/etc/init.d/bcg-ud"):
+                print("Try this command:")
+                print("/etc/init.d/bcg-ud stop")
+            else:
+                try:
+                    process = subprocess.Popen(['pm2', '-m', 'list'], stdout=subprocess.PIPE)
+                    out, err = process.communicate()
+                    for line in out.splitlines():
+                        if line.startswith(b"+---"):
+                            name = line[5:].decode()
+                            if 'bcg' in name and name != 'bcg-cm':
+                                print("Try this command:")
+                                print("pm2 stop %s" % name)
+                except Exception as e:
+                    pass
+        if os.getenv('DEBUG', False):
+            raise e
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description='BigClown Firmware Tool')
 
@@ -175,8 +219,8 @@ def main():
         sys.exit()
 
     if args.command == 'help':
-        if args.what:
-            subparsers[args.what].print_help()
+        if what:
+            subparsers[what].print_help()
         else:
             parser.print_help()
         sys.exit()
@@ -202,29 +246,7 @@ def main():
             print('Nothing found')
 
     elif args.command == 'flash':
-        if args.what.startswith('http'):
-            filename_bin = download_url(args.what, user_cache_dir)
-
-        elif os.path.exists(args.what) and os.path.isfile(args.what):
-            filename_bin = args.what
-
-        else:
-            firmware = repos.get_firmware(args.what)
-            if not firmware:
-                print('Firmware not found, try updating first')
-                sys.exit(1)
-            filename_bin = download_url(firmware['download_url'], user_cache_dir)
-
-        try:
-            sys.exit(0 if flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu) else 1)
-        except KeyboardInterrupt as e:
-            print("")
-            sys.exit(1)
-        except Exception as e:
-            print(e)
-            if os.getenv('DEBUG', False):
-                raise e
-            sys.exit(1)
+        command_flash(args.what, args.device, args.dfu, repos, user_cache_dir)
 
     elif args.command == 'update':
         repos.update()
