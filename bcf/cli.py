@@ -219,10 +219,15 @@ def main():
         sys.exit()
 
     if args.command == 'help':
-        if what:
-            subparsers[what].print_help()
+        if args.what:
+            subparsers[args.what].print_help()
         else:
             parser.print_help()
+            print("=" * 60 + os.linesep)
+            for subparser in subparser.choices:
+                if subparser in subparsers:
+                    subparsers[subparser].print_help()
+                    print(os.linesep)
         sys.exit()
 
     user_cache_dir = appdirs.user_cache_dir('bcf')
