@@ -8,6 +8,7 @@ import struct
 import math
 import select
 import os
+from .error import *
 
 PARITY_NONE = 0
 PARITY_ODD = 1
@@ -15,6 +16,8 @@ PARITY_EVEN = 2
 
 STOP_BIT_1 = 0
 STOP_BIT_2 = 2
+
+__all__ = ["Bridge", "get_list"]
 
 
 def get_list():
@@ -49,8 +52,16 @@ def get_list():
 class Bridge:
 
     def __init__(self, hid):
-        self.file = open(hid, 'rb+', buffering=0)
-        fcntl.lockf(self.file, fcntl.LOCK_EX)
+        try:
+            self.file = open(hid, 'rb+', buffering=0)
+        except Exception as e:
+            raise ErrorOpenDevice('Could not open hid %s' % hid)
+
+        try:
+            fcntl.lockf(self.file, fcntl.LOCK_EX)
+        except Exception as e:
+            raise ErrorLockDevice('Could not lock device %s' % hid)
+
         flag = fcntl.fcntl(self.file, fcntl.F_GETFL)
         fcntl.fcntl(self.file, fcntl.F_SETFL, flag | os.O_NONBLOCK)
 

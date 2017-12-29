@@ -9,24 +9,35 @@ from time import sleep, time
 import math
 import array
 from ctypes import *
+from .error import *
 try:
     import fcntl
 except ImportError:
     fcntl = None
 
+__all__ = ["SerialPort"]
+
 
 class SerialPort:
     def __init__(self, device):
         self.ser = None
-        self.ser = serial.Serial(device,
-                                 baudrate=921600,  # 1152000,
-                                 bytesize=serial.EIGHTBITS,
-                                 parity=serial.PARITY_EVEN,
-                                 stopbits=serial.STOPBITS_ONE,
-                                 timeout=0.1,
-                                 xonxoff=False,
-                                 rtscts=False,
-                                 dsrdtr=False)
+        try:
+            self.ser = serial.Serial(device,
+                                     baudrate=921600,  # 1152000,
+                                     bytesize=serial.EIGHTBITS,
+                                     parity=serial.PARITY_EVEN,
+                                     stopbits=serial.STOPBITS_ONE,
+                                     timeout=0.1,
+                                     xonxoff=False,
+                                     rtscts=False,
+                                     dsrdtr=False)
+        except serial.serialutil.SerialException as e:
+            if e.errno == 2:
+                raise ErrorOpenDevice('Could not open device %s' % device)
+            raise e
+
+        self._device = device
+
         self._connect = False
 
         self._lock()
@@ -45,7 +56,11 @@ class SerialPort:
     def _lock(self):
         if not fcntl or not self.ser:
             return
-        fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except Exception as e:
+            raise ErrorLockDevice('Could not lock device %s' % self._device)
+
         logging.debug('_lock')
 
     def _unlock(self):
