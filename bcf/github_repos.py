@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals
 import os
+import sys
 import json
 from datetime import datetime, timedelta
 
-try:
-    from urllib import urlopen, urlretrieve
-except ImportError:  # Python 3
-    from urllib.request import urlopen, urlretrieve
+if sys.version_info[0] == 3:
+    from urllib.request import urlopen, urlretrieve, Request
+    from urllib.error import HTTPError
+else:
+    from urllib2 import urlopen, HTTPError, Request
+    from urllib import urlretrieve
 
 
 class Github_Repos:
 
-    def __init__(self, user_cache_dir):
+    def __init__(self, user_config_dir, user_cache_dir):
         self._user_cache_dir = user_cache_dir
         if not os.path.exists(self._user_cache_dir):
             os.makedirs(self._user_cache_dir)
         self._cache_repos = os.path.join(self._user_cache_dir, 'repos.json')
         self._repos = {}
         self._updated = []
+        self._oauth_token = None
         if os.path.exists(self._cache_repos):
             try:
                 self._repos = json.load(open(self._cache_repos))
@@ -33,6 +38,9 @@ class Github_Repos:
 
     def get_updated(self):
         return self._updated
+
+    def set_oauth_token(self, oauth_token):
+        self._oauth_token = oauth_token
 
     def get_firmware_table(self, search='', all=False, description=False, show_pre_release=False):
         table = []
@@ -127,7 +135,21 @@ class Github_Repos:
                 return
 
     def api_get(self, url):
-        response = urlopen(url)
+        try:
+            headers = {}
+            if self._oauth_token:
+                headers["Authorization"] = "token " + self._oauth_token
+            req = Request(url, headers=headers)
+            response = urlopen(req)
+        except HTTPError as e:
+            if e.getcode() == 403:
+                print("Github API rate limit exceeded, more info https://developer.github.com/v3/#rate-limiting")
+                ts = e.headers.get('X-RateLimit-Reset', None)
+                if ts:
+                    print('Rate limit will be reset in', datetime.fromtimestamp(float(ts)))
+            else:
+                print(e)
+            sys.exit(1)
         v = response.read()
         try:
             return json.loads(v.decode('utf-8'))
