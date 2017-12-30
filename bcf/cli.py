@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
-import __future__
+from __future__ import print_function, unicode_literals
 import argcomplete
 import argparse
 import os
@@ -28,6 +28,9 @@ __version__ = '@@VERSION@@'
 SKELETON_URL_ZIP = 'https://github.com/bigclownlabs/bcf-skeleton/archive/master.zip'
 SDK_URL_ZIP = 'https://github.com/bigclownlabs/bcf-sdk/archive/master.zip'
 SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
+
+user_cache_dir = appdirs.user_cache_dir('bcf')
+user_config_dir = appdirs.user_config_dir('bcf')
 
 
 def print_table(labels, rows):
@@ -76,8 +79,11 @@ def download_url_reporthook(count, blockSize, totalSize):
     print_progress_bar('Download', count * blockSize, totalSize)
 
 
-def download_url(url, user_cache_dir, use_cache=True):
-    filename = hashlib.sha256(url.encode()).hexdigest()
+def download_url(url, use_cache=True):
+    if url.startswith("https://github.com/bigclownlabs/bcf-"):
+        filename = url.rsplit('/', 1)[1]
+    else:
+        filename = hashlib.sha256(url.encode()).hexdigest()
     filename_bin = os.path.join(user_cache_dir, filename)
 
     if use_cache and os.path.exists(filename_bin):
@@ -91,14 +97,12 @@ def download_url(url, user_cache_dir, use_cache=True):
     return filename_bin
 
 
-class FlashChoicesCompleter(object):
+class FirmwareChoicesCompleter(object):
     def __init__(self, find_bin):
         self._find_bin = find_bin
 
     def __call__(self, **kwargs):
-        user_cache_dir = appdirs.user_cache_dir('bcf')
-        repos = Github_Repos(user_cache_dir)
-        # search = kwargs.get('prefix', None)
+        repos = Github_Repos(user_config_dir, user_cache_dir)
         firmwares = repos.get_firmware_list()
         if self._find_bin:
             firmwares += glob.glob('*.bin')
@@ -118,9 +122,9 @@ def command_devices(verbose=False, include_links=False):
             sys.stdout.write("    hwid: {}\n".format(hwid))
 
 
-def command_flash(what, device, dfu, repos, user_cache_dir):
+def command_flash(what, device, dfu, repos):
     if what.startswith('http'):
-        filename_bin = download_url(what, user_cache_dir)
+        filename_bin = download_url(what)
 
     elif os.path.exists(what) and os.path.isfile(what):
         filename_bin = what
@@ -130,7 +134,7 @@ def command_flash(what, device, dfu, repos, user_cache_dir):
         if not firmware:
             print('Firmware not found, try updating first')
             sys.exit(1)
-        filename_bin = download_url(firmware['download_url'], user_cache_dir)
+        filename_bin = download_url(firmware['download_url'])
 
     try:
         sys.exit(0 if flasher.flash(filename_bin, device, reporthook=print_progress_bar, use_dfu=dfu) else 1)
@@ -177,7 +181,7 @@ def main():
     subparsers['flash'] = subparser.add_parser('flash', help="flash firmware",
                                                usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
     subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?',
-                                     default="firmware.bin").completer = FlashChoicesCompleter(True)
+                                     default="firmware.bin").completer = FirmwareChoicesCompleter(True)
     subparsers['flash'].add_argument('--device', help='device', required='--dfu' not in sys.argv)
     subparsers['flash'].add_argument('--dfu', help='use dfu mode', action='store_true')
 
@@ -193,7 +197,7 @@ def main():
 
     subparsers['pull'] = subparser.add_parser('pull', help="pull firmware to cache",
                                               usage='%(prog)s <firmware>\n       %(prog)s <url>')
-    subparsers['pull'].add_argument('what', help=argparse.SUPPRESS).completer = FlashChoicesCompleter(False)
+    subparsers['pull'].add_argument('what', help=argparse.SUPPRESS).completer = FirmwareChoicesCompleter(False)
 
     subparsers['clean'] = subparser.add_parser('clean', help="clean cache")
 
@@ -230,8 +234,7 @@ def main():
                     print(os.linesep)
         sys.exit()
 
-    user_cache_dir = appdirs.user_cache_dir('bcf')
-    repos = Github_Repos(user_cache_dir)
+    repos = Github_Repos(user_config_dir, user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
         # labels = ['Name:Bin:Version']
@@ -251,7 +254,7 @@ def main():
             print('Nothing found')
 
     elif args.command == 'flash':
-        command_flash(args.what, args.device, args.dfu, repos, user_cache_dir)
+        command_flash(args.what, args.device, args.dfu, repos)
 
     elif args.command == 'update':
         repos.update()
@@ -264,17 +267,17 @@ def main():
             for name in repos.get_firmware_list():
                 firmware = repos.get_firmware(name)
                 print('pull', name)
-                download_url(firmware['download_url'], user_cache_dir, True)
+                download_url(firmware['download_url'], True)
                 print()
 
         elif args.what.startswith('http'):
-            download_url(args.what, user_cache_dir, True)
+            download_url(args.what, True)
         else:
             firmware = repos.get_firmware(args.what)
             if not firmware:
                 print('Firmware not found, try updating first, command: bcf update')
                 sys.exit(1)
-            download_url(firmware['download_url'], user_cache_dir, True)
+            download_url(firmware['download_url'], True)
 
     elif args.command == 'clean':
         repos.clear()
@@ -288,7 +291,7 @@ def main():
             print('Directory already exists')
             sys.exit(1)
 
-        skeleton_zip_filename = download_url(SKELETON_URL_ZIP, user_cache_dir)
+        skeleton_zip_filename = download_url(SKELETON_URL_ZIP)
         print()
 
         tmp_dir = tempfile.mkdtemp()
@@ -304,7 +307,7 @@ def main():
         os.chdir(name)
 
         if args.no_git:
-            sdk_zip_filename = download_url(SDK_URL_ZIP, user_cache_dir)
+            sdk_zip_filename = download_url(SDK_URL_ZIP)
             zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
             zip_ref.extractall(tmp_dir)
             zip_ref.close()
