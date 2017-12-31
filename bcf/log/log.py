@@ -77,6 +77,8 @@ class SerialPortLog(Log):
         self.ser.close()
 
     def run(self):
+        self.ser.reset_input_buffer()
+
         while True:
             try:
                 line = self.ser.readline()
@@ -87,7 +89,7 @@ class SerialPortLog(Log):
                 self._close()
                 raise
 
-            if not line and line[0] == b'#' and line.endswith(b'\r\n'):
+            if not line:
                 continue
 
             try:
@@ -95,7 +97,8 @@ class SerialPortLog(Log):
             except Exception as e:
                 continue
 
-            self.print(line[1:].strip())
+            if line[0] == '#' and line.endswith('\r\n'):
+                self.print(line[1:].strip())
 
 
 def run(args):
