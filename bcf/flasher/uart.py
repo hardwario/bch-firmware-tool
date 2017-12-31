@@ -33,12 +33,8 @@ class Flash_Serial(object):
         if bridge and 'hidraw' in device:
             self.ser = bridge.SerialPort(device)
         else:
-            try:
-                self.ser = ftdi.SerialPort(device)
-            except serial.serialutil.SerialException as e:
-                if e.errno == 2:
-                    raise Exception('Could not open port %s' % device)
-                raise e
+            # baudrate=1152000
+            self.ser = ftdi.SerialPort(device, baudrate=921600, parity=serial.PARITY_EVEN, timeout=0.1)
 
     def connect(self):
         if not self._connect:
@@ -59,7 +55,7 @@ class Flash_Serial(object):
         return self.connect()
 
     def start_bootloader(self):
-        self.ser.reset_sequence()
+        self.ser.boot_sequence()
 
         sleep(0.001)
 
@@ -400,6 +396,11 @@ def flash(device, filename_bin, run=True, reporthook=None):
 
     if run:
         api.go(0x08000000)
+
+
+def reset(device):
+    api = Flash_Serial(device)
+    api.ser.reset_sequence()
 
 
 def get_list_devices():

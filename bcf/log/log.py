@@ -7,11 +7,9 @@ import serial
 from datetime import datetime
 from time import sleep
 from colorama import init, Fore, Style
-try:
-    import fcntl
-except ImportError:
-    fcntl = None
+from ..flasher.serialport.ftdi import SerialPort
 
+BAUDRATE = 115200
 log_level_color_lut = {'D': Fore.MAGENTA, 'I': Fore.GREEN, 'W': Fore.YELLOW, 'E': Fore.RED}
 
 
@@ -57,45 +55,19 @@ class Log(object):
 class SerialPortLog(Log):
     def __init__(self, device, show_time, no_color, record_file):
         Log.__init__(self, show_time, no_color, record_file)
-        self.ser = None
-        try:
-            self.ser = serial.Serial(device, baudrate=115200, timeout=3.0)
-        except serial.serialutil.SerialException as e:
-            if e.errno == 2:
-                raise Exception('Could not open device %s' % device)
-            raise e
+        if isinstance(device, SerialPort):
+            self.ser = device
+        else:
+            self.ser = SerialPort(device, baudrate=BAUDRATE)
 
-        self._device = device
-
-        if fcntl:
-            try:
-                fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except Exception as e:
-                raise Exception('Could not lock device %s' % self._device)
-
-    def ftdi_reset(self):
-        self.ser.rts = True
-        self.ser.dtr = False
-        sleep(0.1)
-        self.ser.rts = False
-
-    def _close(self):
-        if fcntl:
-            fcntl.flock(self.ser.fileno(), fcntl.LOCK_UN)
-        self.ser.close()
+    def reset_sequence(self):
+        self.ser.reset_sequence()
 
     def run(self):
         self.ser.reset_input_buffer()
 
         while True:
-            try:
-                line = self.ser.readline()
-            except serial.SerialException as e:
-                self._close()
-                raise
-            except KeyboardInterrupt as e:
-                self._close()
-                raise
+            line = self.ser.readline()
 
             if not line:
                 continue
@@ -109,11 +81,11 @@ class SerialPortLog(Log):
                 self.print(line[1:].strip())
 
 
-def run(device, show_time=True, no_color=False, record_file=None, ftdi_reset=False):
+def run(device, show_time=True, no_color=False, record_file=None, reset=False):
     init(autoreset=False)
     log = SerialPortLog(device, show_time, no_color, record_file)
-    if ftdi_reset:
-        log.ftdi_reset()
+    if reset:
+        log.reset_sequence()
     log.run()
 
 

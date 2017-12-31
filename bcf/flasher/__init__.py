@@ -9,3 +9,7 @@ def flash(filename_bin, device=None, reporthook=None, use_dfu=False, run=True):
         dfu.flash(filename_bin, reporthook=reporthook)
     else:
         uart.flash(device, filename_bin, run=run, reporthook=reporthook)
+
+
+def reset(device):
+    uart.reset(device)

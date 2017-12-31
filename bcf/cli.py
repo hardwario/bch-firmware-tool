@@ -140,7 +140,7 @@ def command_flash(what, device, dfu, use_log, repos):
     try:
         flasher.flash(filename_bin, device, reporthook=print_progress_bar, use_dfu=dfu, run=not use_log)
         if use_log:
-            log.run(device, ftdi_reset=True)
+            log.run(device, reset=True)
     except KeyboardInterrupt as e:
         print("")
         sys.exit(1)
@@ -163,6 +163,22 @@ def command_flash(what, device, dfu, use_log, repos):
                                 print("pm2 stop %s" % name)
                 except Exception as e:
                     pass
+        if os.getenv('DEBUG', False):
+            raise e
+        sys.exit(1)
+
+
+def command_reset(device, use_log):
+    try:
+        if use_log:
+            log.run(device, reset=True)
+        else:
+            flasher.reset(device)
+
+    except KeyboardInterrupt as e:
+        sys.exit(1)
+    except Exception as e:
+        print(e)
         if os.getenv('DEBUG', False):
             raise e
         sys.exit(1)
@@ -216,6 +232,10 @@ def main():
     subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
 
     subparsers['log'] = log.add_arguments(subparser.add_parser('log', help="show log"))
+
+    subparsers['reset'] = subparser.add_parser('reset', help="reset core module, not work for r1.3")
+    subparsers['reset'].add_argument('--device', help='device', required=True)
+    subparsers['reset'].add_argument('--log', help='run log', action='store_true')
 
     subparser_help = subparser.add_parser('help', help="show help")
     subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
@@ -334,6 +354,9 @@ def main():
 
     elif args.command == 'log':
         log.run_args(args)
+
+    elif args.command == 'reset':
+        command_reset(args.device, args.log)
 
 
 if __name__ == '__main__':

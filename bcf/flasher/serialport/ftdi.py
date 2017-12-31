@@ -19,15 +19,15 @@ __all__ = ["SerialPort"]
 
 
 class SerialPort:
-    def __init__(self, device):
+    def __init__(self, device, baudrate, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, timeout=3):
         self.ser = None
         try:
             self.ser = serial.Serial(device,
-                                     baudrate=921600,  # 1152000,
-                                     bytesize=serial.EIGHTBITS,
-                                     parity=serial.PARITY_EVEN,
-                                     stopbits=serial.STOPBITS_ONE,
-                                     timeout=0.1,
+                                     baudrate=baudrate,
+                                     bytesize=bytesize,
+                                     parity=parity,
+                                     stopbits=stopbits,
+                                     timeout=timeout,
                                      xonxoff=False,
                                      rtscts=False,
                                      dsrdtr=False)
@@ -49,6 +49,7 @@ class SerialPort:
         self.write = self.ser.write
         self.read = self.ser.read
         self.flush = self.ser.flush
+        self.readline = self.ser.readline
 
     def __del__(self):
         self._unlock()
@@ -110,7 +111,7 @@ class SerialPort:
         except Exception as e:
             logging.exception(e)
 
-    def reset_sequence(self):
+    def boot_sequence(self):
         self.ser.rts = True
         self.ser.dtr = True
         sleep(0.1)
@@ -124,3 +125,9 @@ class SerialPort:
         sleep(0.1)
 
         self.ser.dtr = False
+
+    def reset_sequence(self):
+        self.ser.rts = True
+        self.ser.dtr = False
+        sleep(0.1)
+        self.ser.rts = False

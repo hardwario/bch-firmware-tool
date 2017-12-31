@@ -171,13 +171,18 @@ class SerialPort:
     def flush(self):
         return
 
-    def reset_sequence(self):
+    def boot_sequence(self):
         self.b.reset(True)
         self.b.boot(True)
         time.sleep(0.1)
         self.b.reset(False)
         time.sleep(0.1)
         self.b.boot(False)
+
+    def reset_sequence(self):
+        self.b.reset(True)
+        time.sleep(0.1)
+        self.b.reset(False)
 
 
 if __name__ == '__main__':
