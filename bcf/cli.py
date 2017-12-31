@@ -239,6 +239,7 @@ def main():
 
     subparser_help = subparser.add_parser('help', help="show help")
     subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
+    subparser_help.add_argument('--all', help='show help for all commands', action='store_true')
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
@@ -254,11 +255,13 @@ def main():
             subparsers[args.what].print_help()
         else:
             parser.print_help()
-            print("=" * 60 + os.linesep)
-            for subparser in subparser.choices:
-                if subparser in subparsers:
-                    subparsers[subparser].print_help()
-                    print(os.linesep)
+            print("  --all          show help for all commands")
+            if args.all:
+                print("=" * 60 + os.linesep)
+                for subparser in subparser.choices:
+                    if subparser in subparsers:
+                        subparsers[subparser].print_help()
+                        print(os.linesep)
         sys.exit()
 
     repos = Github_Repos(user_config_dir, user_cache_dir)
