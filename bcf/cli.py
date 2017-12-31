@@ -18,6 +18,7 @@ import subprocess
 import appdirs
 from .github_repos import Github_Repos
 from . import flasher
+from .log import log
 
 try:
     from urllib import urlretrieve
@@ -210,6 +211,8 @@ def main():
     subparsers['read'].add_argument('--device', help='device', required=True)
     subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
 
+    subparsers['log'] = log.add_arguments(subparser.add_parser('log', help="show log"))
+
     subparser_help = subparser.add_parser('help', help="show help")
     subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
 
@@ -324,6 +327,9 @@ def main():
 
     elif args.command == 'read':
         flasher.uart.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
+
+    elif args.command == 'log':
+        log.run(args)
 
 
 if __name__ == '__main__':
