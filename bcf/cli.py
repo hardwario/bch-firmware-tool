@@ -123,7 +123,7 @@ def command_devices(verbose=False, include_links=False):
             sys.stdout.write("    hwid: {}\n".format(hwid))
 
 
-def command_flash(what, device, dfu, repos):
+def command_flash(what, device, dfu, use_log, repos):
     if what.startswith('http'):
         filename_bin = download_url(what)
 
@@ -138,7 +138,9 @@ def command_flash(what, device, dfu, repos):
         filename_bin = download_url(firmware['download_url'])
 
     try:
-        sys.exit(0 if flasher.flash(filename_bin, device, reporthook=print_progress_bar, use_dfu=dfu) else 1)
+        flasher.flash(filename_bin, device, reporthook=print_progress_bar, use_dfu=dfu, run=not use_log)
+        if use_log:
+            log.run(device, ftdi_reset=True)
     except KeyboardInterrupt as e:
         print("")
         sys.exit(1)
@@ -184,7 +186,9 @@ def main():
     subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?',
                                      default="firmware.bin").completer = FirmwareChoicesCompleter(True)
     subparsers['flash'].add_argument('--device', help='device', required='--dfu' not in sys.argv)
-    subparsers['flash'].add_argument('--dfu', help='use dfu mode', action='store_true')
+    group = subparsers['flash'].add_mutually_exclusive_group()
+    group.add_argument('--dfu', help='use dfu mode', action='store_true')
+    group.add_argument('--log', help='run log', action='store_true')
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
     subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
@@ -257,7 +261,7 @@ def main():
             print('Nothing found')
 
     elif args.command == 'flash':
-        command_flash(args.what, args.device, args.dfu, repos)
+        command_flash(args.what, args.device, args.dfu, args.log, repos)
 
     elif args.command == 'update':
         repos.update()
@@ -329,7 +333,7 @@ def main():
         flasher.uart.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
 
     elif args.command == 'log':
-        log.run(args)
+        log.run_args(args)
 
 
 if __name__ == '__main__':

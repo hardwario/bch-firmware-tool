@@ -382,7 +382,7 @@ def clone(device, filename, length, reporthook=None, api=None, start_address=0x0
     f.close()
 
 
-def flash(device, filename_bin, reporthook=None):
+def flash(device, filename_bin, run=True, reporthook=None):
 
     firmware = open(filename_bin, 'rb').read()
 
@@ -398,7 +398,8 @@ def flash(device, filename_bin, reporthook=None):
 
     verify(device, firmware, reporthook=reporthook, api=api)
 
-    api.go(0x08000000)
+    if run:
+        api.go(0x08000000)
 
 
 def get_list_devices():

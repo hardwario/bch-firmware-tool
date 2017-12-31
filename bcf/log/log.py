@@ -5,7 +5,7 @@ import sys
 import os
 import serial
 from datetime import datetime
-import math
+from time import sleep
 from colorama import init, Fore, Style
 try:
     import fcntl
@@ -19,7 +19,7 @@ def add_arguments(action):
     action.add_argument('--device', help='device', required=True)
     action.add_argument('--time', help='show time', action='store_true')
     action.add_argument('--no-color', help='disable color', action='store_true')
-    action.add_argument('--record', nargs='?', help="record to file", metavar='FILENAME')
+    action.add_argument('--record', nargs='?', help="record to file", metavar='FILE')
     return action
 
 
@@ -37,8 +37,10 @@ class Log(object):
 
         if self._show_time:
             dt = datetime.now()
-
-            time = dt.strftime('%Y-%m-%d %H:%M:%S.') + "%02i " % round(dt.microsecond / 10000)
+            ms = round(dt.microsecond / 10000)
+            if ms > 99:
+                ms = 99
+            time = dt.strftime('%Y-%m-%d %H:%M:%S.') + "%02i " % ms
         else:
             time = ""
 
@@ -71,6 +73,12 @@ class SerialPortLog(Log):
             except Exception as e:
                 raise Exception('Could not lock device %s' % self._device)
 
+    def ftdi_reset(self):
+        self.ser.rts = True
+        self.ser.dtr = False
+        sleep(0.1)
+        self.ser.rts = False
+
     def _close(self):
         if fcntl:
             fcntl.flock(self.ser.fileno(), fcntl.LOCK_UN)
@@ -101,13 +109,22 @@ class SerialPortLog(Log):
                 self.print(line[1:].strip())
 
 
-def run(args):
+def run(device, show_time=True, no_color=False, record_file=None, ftdi_reset=False):
     init(autoreset=False)
+    log = SerialPortLog(device, show_time, no_color, record_file)
+    if ftdi_reset:
+        log.ftdi_reset()
+    log.run()
+
+
+def run_args(args):
+
     try:
         record_file = open(args.record, 'a') if args.record else None
 
         if args.device:
-            SerialPortLog(args.device, args.time, args.no_color, record_file).run()
+            run(args.device, args.time, args.no_color, record_file)
+
     except KeyboardInterrupt as e:
         sys.exit(1)
     except Exception as e:
