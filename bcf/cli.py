@@ -123,24 +123,24 @@ def command_devices(verbose=False, include_links=False):
             sys.stdout.write("    hwid: {}\n".format(hwid))
 
 
-def command_flash(what, device, dfu, use_log, repos):
-    if what.startswith('http'):
-        filename_bin = download_url(what)
+def command_flash(args, repos):
+    if args.what.startswith('http'):
+        filename_bin = download_url(args.what)
 
-    elif os.path.exists(what) and os.path.isfile(what):
-        filename_bin = what
+    elif os.path.exists(args.what) and os.path.isfile(args.what):
+        filename_bin = args.what
 
     else:
-        firmware = repos.get_firmware(what)
+        firmware = repos.get_firmware(args.what)
         if not firmware:
             print('Firmware not found, try updating first')
             sys.exit(1)
         filename_bin = download_url(firmware['download_url'])
 
     try:
-        flasher.flash(filename_bin, device, reporthook=print_progress_bar, use_dfu=dfu, run=not use_log)
-        if use_log:
-            log.run(device, reset=True)
+        flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu, run=not args.log)
+        if args.log:
+            log.run_args(args, reset=True)
     except KeyboardInterrupt as e:
         print("")
         sys.exit(1)
@@ -168,12 +168,12 @@ def command_flash(what, device, dfu, use_log, repos):
         sys.exit(1)
 
 
-def command_reset(device, use_log):
+def command_reset(args):
     try:
-        if use_log:
-            log.run(device, reset=True)
+        if args.log:
+            log.run_args(args, reset=True)
         else:
-            flasher.reset(device)
+            flasher.reset(args.device)
 
     except KeyboardInterrupt as e:
         sys.exit(1)
@@ -182,6 +182,11 @@ def command_reset(device, use_log):
         if os.getenv('DEBUG', False):
             raise e
         sys.exit(1)
+
+
+def test_log_argumensts(args, parser):
+    if not args.log and (args.time or args.no_color or args.record):
+        parser.error('--log is required when use --time or --no-color or --record.')
 
 
 def main():
@@ -205,6 +210,8 @@ def main():
     group = subparsers['flash'].add_mutually_exclusive_group()
     group.add_argument('--dfu', help='use dfu mode', action='store_true')
     group.add_argument('--log', help='run log', action='store_true')
+    group_log = subparsers['flash'].add_argument_group('optional for --log arguments')
+    log.add_arguments(group_log)
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
     subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
@@ -231,11 +238,15 @@ def main():
     subparsers['read'].add_argument('--device', help='device', required=True)
     subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
 
-    subparsers['log'] = log.add_arguments(subparser.add_parser('log', help="show log"))
+    subparsers['log'] = subparser.add_parser('log', help="show log")
+    subparsers['log'].add_argument('--device', help='device', required=True)
+    log.add_arguments(subparsers['log'])
 
     subparsers['reset'] = subparser.add_parser('reset', help="reset core module, not work for r1.3")
     subparsers['reset'].add_argument('--device', help='device', required=True)
     subparsers['reset'].add_argument('--log', help='run log', action='store_true')
+    group_log = subparsers['reset'].add_argument_group('optional for --log arguments')
+    log.add_arguments(group_log)
 
     subparser_help = subparser.add_parser('help', help="show help")
     subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
@@ -284,7 +295,8 @@ def main():
             print('Nothing found')
 
     elif args.command == 'flash':
-        command_flash(args.what, args.device, args.dfu, args.log, repos)
+        test_log_argumensts(args, subparsers['flash'])
+        command_flash(args, repos)
 
     elif args.command == 'update':
         repos.update()
@@ -359,7 +371,8 @@ def main():
         log.run_args(args)
 
     elif args.command == 'reset':
-        command_reset(args.device, args.log)
+        test_log_argumensts(args, subparsers['reset'])
+        command_reset(args)
 
 
 if __name__ == '__main__':

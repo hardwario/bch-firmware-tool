@@ -14,7 +14,6 @@ log_level_color_lut = {'D': Fore.MAGENTA, 'I': Fore.GREEN, 'W': Fore.YELLOW, 'E'
 
 
 def add_arguments(action):
-    action.add_argument('--device', help='device', required=True)
     action.add_argument('--time', help='show time', action='store_true')
     action.add_argument('--no-color', help='disable color', action='store_true')
     action.add_argument('--record', nargs='?', help="record to file", metavar='FILE')
@@ -89,13 +88,13 @@ def run(device, show_time=True, no_color=False, record_file=None, reset=False):
     log.run()
 
 
-def run_args(args):
+def run_args(args, reset=False):
 
     try:
         record_file = open(args.record, 'a') if args.record else None
 
         if args.device:
-            run(args.device, args.time, args.no_color, record_file)
+            run(args.device, args.time, args.no_color, record_file, reset)
 
     except KeyboardInterrupt as e:
         sys.exit(1)
