@@ -3,6 +3,9 @@
 import __future__
 import subprocess
 import sys
+import os
+import platform
+import time
 
 dfu = "dfu-util"
 
@@ -22,6 +25,27 @@ Please install dfu-util:
 sudo apt install dfu-util
 Or from https://sourceforge.net/projects/dfu-util/files/?source=navbar
 '''
+
+zadig_ini = '''
+[general]
+  # Start application in advanced mode (default = false)
+  advanced_mode = false
+  # Exit application upon successful driver installation (default = false)
+  exit_on_success = true
+
+[driver]
+  # Select the following as the default driver to install:
+  # WinUSB = 0, libusb0.sys = 1, libusbK.sys = 2, Custom = 3 (default = WinUSB)
+  default_driver = 0
+
+[device]
+  VID = 0x0483
+  PID = 0xDF11
+  list_all = true
+
+'''
+
+help_url = "https://www.bigclown.com/doc/tutorials/toolchain-guide/#windows-dfu-driver-troubleshooting"
 
 
 def call(cmd, title, reporthook):
@@ -67,6 +91,19 @@ def flash(filename_bin, reporthook):
     cmd = ["-s", "0x08000000:leave", "-d", "0483:df11", "-a", "0", "-D", filename_bin]
 
     out = call(cmd, "Flash", reporthook)
+
+    if "Cannot open DFU device 0483:df11" in out:
+        if sys.platform == 'win32':
+            with open("zadig.ini", "w") as f:
+                f.write(zadig_ini.replace('\r', '').replace('\n', '\r\n'))
+
+            time.sleep(0.5)
+
+            os.system("start zadig.exe")
+
+            os.system("start " + help_url)
+
+        raise Exception("Driver Error, more info here " + help_url)
 
     if "No DFU capable USB device available" in out:
         raise Exception(dfu_help)
