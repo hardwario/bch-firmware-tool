@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
-import __future__
+from __future__ import print_function, unicode_literals
 import argcomplete
 import argparse
 import os
@@ -12,16 +13,12 @@ import tempfile
 import zipfile
 import shutil
 import platform
+import subprocess
 
 import appdirs
-try:
-    from .github_repos import Github_Repos
-    from . import flash_dfu
-    from . import flash_serial
-except Exception:
-    from github_repos import Github_Repos
-    import flash_dfu
-    import flash_serial
+from .github_repos import Github_Repos
+from . import flasher
+from .log import log
 
 try:
     from urllib import urlretrieve
@@ -32,6 +29,9 @@ __version__ = '@@VERSION@@'
 SKELETON_URL_ZIP = 'https://github.com/bigclownlabs/bcf-skeleton/archive/master.zip'
 SDK_URL_ZIP = 'https://github.com/bigclownlabs/bcf-sdk/archive/master.zip'
 SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
+
+user_cache_dir = appdirs.user_cache_dir('bcf')
+user_config_dir = appdirs.user_config_dir('bcf')
 
 
 def print_table(labels, rows):
@@ -80,8 +80,11 @@ def download_url_reporthook(count, blockSize, totalSize):
     print_progress_bar('Download', count * blockSize, totalSize)
 
 
-def download_url(url, user_cache_dir, use_cache=True):
-    filename = hashlib.sha256(url.encode()).hexdigest()
+def download_url(url, use_cache=True):
+    if url.startswith("https://github.com/bigclownlabs/bcf-"):
+        filename = url.rsplit('/', 1)[1]
+    else:
+        filename = hashlib.sha256(url.encode()).hexdigest()
     filename_bin = os.path.join(user_cache_dir, filename)
 
     if use_cache and os.path.exists(filename_bin):
@@ -95,22 +98,98 @@ def download_url(url, user_cache_dir, use_cache=True):
     return filename_bin
 
 
-class FlashChoicesCompleter(object):
+class FirmwareChoicesCompleter(object):
     def __init__(self, find_bin):
         self._find_bin = find_bin
 
     def __call__(self, **kwargs):
-        user_cache_dir = appdirs.user_cache_dir('bcf')
-        repos = Github_Repos(user_cache_dir)
-        # search = kwargs.get('prefix', None)
+        repos = Github_Repos(user_config_dir, user_cache_dir)
         firmwares = repos.get_firmware_list()
         if self._find_bin:
             firmwares += glob.glob('*.bin')
         return firmwares
 
 
+def command_devices(verbose=False, include_links=False):
+    if os.name == 'nt' or sys.platform == 'win32':
+        from serial.tools.list_ports_windows import comports
+    elif os.name == 'posix':
+        from serial.tools.list_ports_posix import comports
+
+    for port, desc, hwid in sorted(comports(include_links=include_links)):
+        sys.stdout.write("{:20}\n".format(port))
+        if verbose:
+            sys.stdout.write("    desc: {}\n".format(desc))
+            sys.stdout.write("    hwid: {}\n".format(hwid))
+
+
+def command_flash(args, repos):
+    if args.what.startswith('http'):
+        filename_bin = download_url(args.what)
+
+    elif os.path.exists(args.what) and os.path.isfile(args.what):
+        filename_bin = args.what
+
+    else:
+        firmware = repos.get_firmware(args.what)
+        if not firmware:
+            print('Firmware not found, try updating first')
+            sys.exit(1)
+        filename_bin = download_url(firmware['download_url'])
+
+    try:
+        flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu, run=not args.log)
+        if args.log:
+            log.run_args(args, reset=True)
+    except KeyboardInterrupt as e:
+        print("")
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        if isinstance(e, flasher.serialport.error.ErrorLockDevice):
+            print("TIP: Maybe the bcg service is running - you need to stop it first.")
+            if os.path.exists("/etc/init.d/bcg-ud"):
+                print("Try this command:")
+                print("/etc/init.d/bcg-ud stop")
+            else:
+                try:
+                    process = subprocess.Popen(['pm2', '-m', 'list'], stdout=subprocess.PIPE)
+                    out, err = process.communicate()
+                    for line in out.splitlines():
+                        if line.startswith(b"+---"):
+                            name = line[5:].decode()
+                            if 'bcg' in name and name != 'bcg-cm':
+                                print("Try this command:")
+                                print("pm2 stop %s" % name)
+                except Exception as e:
+                    pass
+        if os.getenv('DEBUG', False):
+            raise e
+        sys.exit(1)
+
+
+def command_reset(args):
+    try:
+        if args.log:
+            log.run_args(args, reset=True)
+        else:
+            flasher.reset(args.device)
+
+    except KeyboardInterrupt as e:
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        if os.getenv('DEBUG', False):
+            raise e
+        sys.exit(1)
+
+
+def test_log_argumensts(args, parser):
+    if not args.log and (args.time or args.no_color or args.record):
+        parser.error('--log is required when use --time or --no-color or --record.')
+
+
 def main():
-    devices = flash_dfu.get_list_devices() + flash_serial.get_list_devices()
     parser = argparse.ArgumentParser(description='BigClown Firmware Tool')
 
     subparsers = {}
@@ -126,12 +205,17 @@ def main():
     subparsers['flash'] = subparser.add_parser('flash', help="flash firmware",
                                                usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
     subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?',
-                                     default="firmware.bin").completer = FlashChoicesCompleter(True)
-    subparsers['flash'].add_argument('--device', help='device',
-                                     default="/dev/ttyUSB0" if not devices else devices[0], choices=devices if devices else None)
-    subparsers['flash'].add_argument('--dfu', help='use dfu mode', action='store_true')
+                                     default="firmware.bin").completer = FirmwareChoicesCompleter(True)
+    subparsers['flash'].add_argument('--device', help='device', required='--dfu' not in sys.argv)
+    group = subparsers['flash'].add_mutually_exclusive_group()
+    group.add_argument('--dfu', help='use dfu mode', action='store_true')
+    group.add_argument('--log', help='run log', action='store_true')
+    group_log = subparsers['flash'].add_argument_group('optional for --log arguments')
+    log.add_arguments(group_log)
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
+    subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
+    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
 
     subparsers['search'] = subparser.add_parser('search', help="search in firmware names and descriptions")
     subparsers['search'].add_argument('pattern', help='search pattern')
@@ -141,7 +225,7 @@ def main():
 
     subparsers['pull'] = subparser.add_parser('pull', help="pull firmware to cache",
                                               usage='%(prog)s <firmware>\n       %(prog)s <url>')
-    subparsers['pull'].add_argument('what', help=argparse.SUPPRESS).completer = FlashChoicesCompleter(False)
+    subparsers['pull'].add_argument('what', help=argparse.SUPPRESS).completer = FirmwareChoicesCompleter(False)
 
     subparsers['clean'] = subparser.add_parser('clean', help="clean cache")
 
@@ -151,12 +235,22 @@ def main():
 
     subparsers['read'] = subparser.add_parser('read', help="download firmware to file")
     subparsers['read'].add_argument('filename', help=argparse.SUPPRESS)
-    subparsers['read'].add_argument('--device', help='device',
-                                    default="/dev/ttyUSB0" if not devices else devices[0], choices=devices if devices else None)
+    subparsers['read'].add_argument('--device', help='device', required=True)
     subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
+
+    subparsers['log'] = subparser.add_parser('log', help="show log")
+    subparsers['log'].add_argument('--device', help='device', required=True)
+    log.add_arguments(subparsers['log'])
+
+    subparsers['reset'] = subparser.add_parser('reset', help="reset core module, not work for r1.3")
+    subparsers['reset'].add_argument('--device', help='device', required=True)
+    subparsers['reset'].add_argument('--log', help='run log', action='store_true')
+    group_log = subparsers['reset'].add_argument_group('optional for --log arguments')
+    log.add_arguments(group_log)
 
     subparser_help = subparser.add_parser('help', help="show help")
     subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
+    subparser_help.add_argument('--all', help='show help for all commands', action='store_true')
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
@@ -172,10 +266,16 @@ def main():
             subparsers[args.what].print_help()
         else:
             parser.print_help()
+            print("  --all          show help for all commands")
+            if args.all:
+                print("=" * 60 + os.linesep)
+                for subparser in subparser.choices:
+                    if subparser in subparsers:
+                        subparsers[subparser].print_help()
+                        print(os.linesep)
         sys.exit()
 
     user_cache_dir = appdirs.user_cache_dir('bcf')
-    print("Using cache dir :", user_cache_dir)
     repos = Github_Repos(user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
@@ -190,56 +290,37 @@ def main():
 
         if rows:
             print_table([], rows)
-        else:
+        elif args.command == 'list':
             print('Nothing found, try updating first')
+        else:
+            print('Nothing found')
 
     elif args.command == 'flash':
-        if args.what.startswith('http'):
-            filename_bin = download_url(args.what, user_cache_dir)
-
-        elif os.path.exists(args.what) and os.path.isfile(args.what):
-            filename_bin = args.what
-
-        else:
-            firmware = repos.get_firmware(args.what)
-            if not firmware:
-                print('Firmware not found, try updating first')
-                sys.exit(1)
-            filename_bin = download_url(firmware['download_url'], user_cache_dir)
-
-        if args.dfu:
-            flash_dfu.run(filename_bin)
-        else:
-            try:
-                flash_serial.run(args.device, filename_bin, reporthook=print_progress_bar)
-            except Exception as e:
-                raise
-                print(str(e))
-                sys.exit(1)
+        test_log_argumensts(args, subparsers['flash'])
+        command_flash(args, repos)
 
     elif args.command == 'update':
         repos.update()
 
     elif args.command == 'devices':
-        for device in devices:
-            print(device)
+        command_devices(verbose=args.verbose, include_links=args.include_links)
 
     elif args.command == 'pull':
         if args.what == 'last':
             for name in repos.get_firmware_list():
                 firmware = repos.get_firmware(name)
                 print('pull', name)
-                download_url(firmware['download_url'], user_cache_dir, True)
+                download_url(firmware['download_url'], True)
                 print()
 
         elif args.what.startswith('http'):
-            download_url(args.what, user_cache_dir, True)
+            download_url(args.what, True)
         else:
             firmware = repos.get_firmware(args.what)
             if not firmware:
                 print('Firmware not found, try updating first, command: bcf update')
                 sys.exit(1)
-            download_url(firmware['download_url'], user_cache_dir, True)
+            download_url(firmware['download_url'], True)
 
     elif args.command == 'clean':
         repos.clear()
@@ -253,7 +334,8 @@ def main():
             print('Directory already exists')
             sys.exit(1)
 
-        skeleton_zip_filename = download_url(SKELETON_URL_ZIP, user_cache_dir)
+        skeleton_zip_filename = download_url(SKELETON_URL_ZIP)
+        print()
 
         tmp_dir = tempfile.mkdtemp()
 
@@ -268,7 +350,7 @@ def main():
         os.chdir(name)
 
         if args.no_git:
-            sdk_zip_filename = download_url(SDK_URL_ZIP, user_cache_dir)
+            sdk_zip_filename = download_url(SDK_URL_ZIP)
             zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
             zip_ref.extractall(tmp_dir)
             zip_ref.close()
@@ -284,7 +366,14 @@ def main():
         os.rmdir(tmp_dir)
 
     elif args.command == 'read':
-        flash_serial.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
+        flasher.uart.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
+
+    elif args.command == 'log':
+        log.run_args(args)
+
+    elif args.command == 'reset':
+        test_log_argumensts(args, subparsers['reset'])
+        command_reset(args)
 
 
 if __name__ == '__main__':

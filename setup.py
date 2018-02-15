@@ -3,15 +3,14 @@
 
 from setuptools import setup, find_packages
 
-requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0']
+requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0', 'colorama']
 
 setup(
     name='bcf',
-    packages=["bcf"],
-    package_dir={'': '.'},
+    packages=["bcf", "bcf.flasher", "bcf.flasher.serialport", "bcf.log"],
     version='@@VERSION@@',
     description='BigClown Firmware Tool.',
-    author='Hardwario s.r.o.',
+    author='HARDWARIO s.r.o.',
     author_email='karel.blavka@bigclown.com',
     url='https://github.com/bigclownlabs/bch-firmware-tool',
     include_package_data=True,
@@ -20,7 +19,7 @@ setup(
     zip_safe=False,
     keywords=['BigClown', 'bcf', 'firmware', 'flasher'],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',

@@ -1,21 +1,29 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals
 import os
+import sys
 import json
+from datetime import datetime, timedelta
 
-try:
-    from urllib import urlopen, urlretrieve
-except ImportError:  # Python 3
-    from urllib.request import urlopen, urlretrieve
+if sys.version_info[0] == 3:
+    from urllib.request import urlopen, urlretrieve, Request
+    from urllib.error import HTTPError
+else:
+    from urllib2 import urlopen, HTTPError, Request
+    from urllib import urlretrieve
 
 
 class Github_Repos:
 
-    def __init__(self, user_cache_dir):
+    def __init__(self, user_config_dir, user_cache_dir):
         self._user_cache_dir = user_cache_dir
         if not os.path.exists(self._user_cache_dir):
             os.makedirs(self._user_cache_dir)
         self._cache_repos = os.path.join(self._user_cache_dir, 'repos.json')
         self._repos = {}
         self._updated = []
+        self._oauth_token = None
         if os.path.exists(self._cache_repos):
             try:
                 self._repos = json.load(open(self._cache_repos))
@@ -31,33 +39,39 @@ class Github_Repos:
     def get_updated(self):
         return self._updated
 
+    def set_oauth_token(self, oauth_token):
+        self._oauth_token = oauth_token
+
     def get_firmware_table(self, search='', all=False, description=False, show_pre_release=False):
         table = []
         names = list(self._repos.keys())
         names.sort()
         for name in names:
             repo = self._repos[name]
-            if not search or search in name or (description and search in repo['description']):
-                for release in repo['releases']:
+            for release in repo['releases']:
 
-                    if release.get('prerelease', False) and not show_pre_release:
+                if release.get('prerelease', False) and not show_pre_release:
+                    continue
+
+                for i, firmware in enumerate(release['firmwares']):
+                    if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
+                        tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
+                    else:
+                        tmp = name + ':' + firmware['name']
+
+                    n = 'bigclownlabs/' + tmp + ':' + release['tag_name']
+
+                    row = [n]
+
+                    if description:
+                        row.append(repo['description'])
+
+                    if search and search not in n and search not in repo['description']:
                         continue
 
-                    for i, firmware in enumerate(release['firmwares']):
-                        if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
-                            tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
-                        else:
-                            tmp = name + ':' + firmware['name']
-
-                        n = 'bigclownlabs/' + tmp + ':' + release['tag_name']
-
-                        row = [n]
-
-                        if description:
-                            row.append(repo['description'])
-                        table.append(row)
-                    if not all:
-                        break
+                    table.append(row)
+                if not all:
+                    break
         return table
 
     def get_firmware_list(self, show_pre_release=False):
@@ -121,7 +135,21 @@ class Github_Repos:
                 return
 
     def api_get(self, url):
-        response = urlopen(url)
+        try:
+            headers = {}
+            if self._oauth_token:
+                headers["Authorization"] = "token " + self._oauth_token
+            req = Request(url, headers=headers)
+            response = urlopen(req)
+        except HTTPError as e:
+            if e.getcode() == 403:
+                print("Github API rate limit exceeded, more info https://developer.github.com/v3/#rate-limiting")
+                ts = e.headers.get('X-RateLimit-Reset', None)
+                if ts:
+                    print('Rate limit will be reset in', datetime.fromtimestamp(float(ts)))
+            else:
+                print(e)
+            sys.exit(1)
         v = response.read()
         try:
             return json.loads(v.decode('utf-8'))
@@ -140,16 +168,18 @@ class Github_Repos:
             if not gh_repos:
                 break
             for gh_repo in gh_repos:
-                if gh_repo['name'].startswith('bcf') and gh_repo['name'] != 'bcf-sdk-core-module':
+                if gh_repo['name'].startswith('bcf') and gh_repo['name'] not in ('bcf-skeleton', 'bcf-sdk'):
 
-                    repo = self._repos.get(gh_repo['name'], {'pushed_at': None, 'releases': [{'tag_name': None}]})
-                    if repo['pushed_at'] != gh_repo['pushed_at']:
+                    repo = self._repos.get(gh_repo['name'], {'releases': [{'tag_name': None}]})
+
+                    if repo.get('pushed_at', None) != gh_repo['pushed_at']:
 
                         print('update data for repo', 'bigclownlabs/' + gh_repo['name'])
 
                         new_repo = {
                             'name': gh_repo['name'],
                             'pushed_at': gh_repo['pushed_at'],
+                            'updated_at': gh_repo['updated_at'],
                             'description': gh_repo['description'],
                             'tag': None
                         }
@@ -182,17 +212,25 @@ class Github_Repos:
                             if release:
                                 releases.append(release)
 
+                        new_repo['releases'] = releases
+
                         if releases:
                             if releases[0]['tag_name'] != repo['releases'][0]['tag_name']:
-                                new_repo['releases'] = releases
                                 self._repos[gh_repo['name']] = new_repo
                                 save = True
+                        else:
+                            pushed_at = datetime.strptime(gh_repo['pushed_at'], '%Y-%m-%dT%H:%M:%SZ')
+                            updated_at = datetime.strptime(gh_repo['updated_at'], '%Y-%m-%dT%H:%M:%SZ')
+                            if datetime.now() - pushed_at > timedelta(days=1) and datetime.now() - updated_at > timedelta(days=1):
+                                self._repos[gh_repo['name']] = new_repo
+                                save = True
+
             page += 1
         if save:
             with open(self._cache_repos, 'w') as fp:
                 json.dump(self._repos, fp, sort_keys=True, indent=2)
 
-            print('save to ', self._cache_repos)
+            print('save to', self._cache_repos)
 
     def clear(self):
         self._repos = {}

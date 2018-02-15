@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import __future__
 import sys
 import logging
@@ -9,15 +10,14 @@ from time import sleep, time
 import math
 import array
 from ctypes import *
+from .serialport import ftdi
 try:
     import fcntl
-    try:
-        from . import bridge
-    except Exception:
-        import bridge
+    from .serialport import bridge
 except ImportError:
     fcntl = None
     bridge = None
+
 if sys.version_info[0] == 2:
     import struct
 
@@ -27,109 +27,14 @@ ACK = b'\x79'
 NACK = b'\x1F'
 
 
-class SerialPort:
-    def __init__(self, device):
-        self.ser = None
-        self.ser = serial.Serial(device,
-                                 baudrate=921600,  # 1152000,
-                                 bytesize=serial.EIGHTBITS,
-                                 parity=serial.PARITY_EVEN,
-                                 stopbits=serial.STOPBITS_ONE,
-                                 timeout=0.1,
-                                 xonxoff=False,
-                                 rtscts=False,
-                                 dsrdtr=False)
-        self._connect = False
-
-        self._lock()
-        self._speed_up()
-
-        self.reset_input_buffer = self.ser.reset_input_buffer
-        self.reset_output_buffer = self.ser.reset_output_buffer
-
-        self.write = self.ser.write
-        self.read = self.ser.read
-        self.flush = self.ser.flush
-
-    def __del__(self):
-        self._unlock()
-
-    def _lock(self):
-        if not fcntl or not self.ser:
-            return
-        fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        logging.debug('_lock')
-
-    def _unlock(self):
-        if not fcntl or not self.ser:
-            return
-        fcntl.flock(self.ser.fileno(), fcntl.LOCK_UN)
-        logging.debug('_unlock')
-
-    def _speed_up(self):
-        if not fcntl:
-            return
-        if platform.system() != 'Linux':
-            return
-
-        logging.debug('_speed_up')
-
-        TIOCGSERIAL = 0x0000541E
-        TIOCSSERIAL = 0x0000541F
-        ASYNC_LOW_LATENCY = 0x2000
-
-        class serial_struct(Structure):
-            _fields_ = [("type", c_int),
-                        ("line", c_int),
-                        ("port", c_uint),
-                        ("irq", c_int),
-                        ("flags", c_int),
-                        ("xmit_fifo_size", c_int),
-                        ("custom_divisor", c_int),
-                        ("baud_base", c_int),
-                        ("close_delay", c_ushort),
-                        ("io_type", c_byte),
-                        ("reserved_char", c_byte * 1),
-                        ("hub6", c_uint),
-                        ("closing_wait", c_ushort),
-                        ("closing_wait2", c_ushort),
-                        ("iomem_base", POINTER(c_ubyte)),
-                        ("iomem_reg_shift", c_ushort),
-                        ("port_high", c_int),
-                        ("iomap_base", c_ulong)]
-
-        buf = serial_struct()
-
-        try:
-            fcntl.ioctl(self.ser.fileno(), TIOCGSERIAL, buf)
-            buf.flags |= ASYNC_LOW_LATENCY
-            fcntl.ioctl(self.ser.fileno(), TIOCSSERIAL, buf)
-        except Exception as e:
-            logging.exception(e)
-
-    def reset_sequence(self):
-        self.ser.rts = True
-        self.ser.dtr = True
-        sleep(0.1)
-
-        self.ser.rts = True
-        self.ser.dtr = False
-        sleep(0.1)
-
-        self.ser.dtr = True
-        self.ser.rts = False
-        sleep(0.1)
-
-        self.ser.dtr = False
-
-
 class Flash_Serial(object):
     def __init__(self, device):
         self.ser = None
         if bridge and 'hidraw' in device:
             self.ser = bridge.SerialPort(device)
         else:
-            self.ser = SerialPort(device)
+            # baudrate=1152000
+            self.ser = ftdi.SerialPort(device, baudrate=921600, parity=serial.PARITY_EVEN, timeout=0.1)
 
     def connect(self):
         if not self._connect:
@@ -150,7 +55,7 @@ class Flash_Serial(object):
         return self.connect()
 
     def start_bootloader(self):
-        self.ser.reset_sequence()
+        self.ser.boot_sequence()
 
         sleep(0.001)
 
@@ -473,7 +378,7 @@ def clone(device, filename, length, reporthook=None, api=None, start_address=0x0
     f.close()
 
 
-def run(device, filename_bin, reporthook=None):
+def flash(device, filename_bin, run=True, reporthook=None):
 
     firmware = open(filename_bin, 'rb').read()
 
@@ -489,24 +394,22 @@ def run(device, filename_bin, reporthook=None):
 
     verify(device, firmware, reporthook=reporthook, api=api)
 
-    api.go(0x08000000)
+    if run:
+        api.go(0x08000000)
+
+
+def reset(device):
+    api = Flash_Serial(device)
+    api.ser.reset_sequence()
 
 
 def get_list_devices():
     table = []
     for p in serial.tools.list_ports.comports():
-        if type(p) == tuple:  # for turris
-            if 'VID:PID=0483:5740' in p[2]:
-                table.append(p[0])
-        else:
-            if p.vid == 0x0403 and p.pid == 0x6001:
-                table.append(p.device)
-            if p.vid == 0x0403 and p.pid == 0x6015 and (not p.serial_number or p.serial_number.startswith("bc-usb-dongle")):
-                table.append(p.device)
+        table.append(p.device)
     if bridge:
         for b in bridge.get_list():
             table.append(b[1])
-
     return table
 
 
