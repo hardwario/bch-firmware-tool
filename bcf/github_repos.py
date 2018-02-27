@@ -215,7 +215,7 @@ class Github_Repos:
                         new_repo['releases'] = releases
 
                         if releases:
-                            if releases[0]['tag_name'] != repo['releases'][0]['tag_name']:
+                            if not repo['releases'] or releases[0]['tag_name'] != repo['releases'][0]['tag_name']:
                                 self._repos[gh_repo['name']] = new_repo
                                 save = True
                         else:
