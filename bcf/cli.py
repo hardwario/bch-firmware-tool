@@ -275,7 +275,8 @@ def main():
                         print(os.linesep)
         sys.exit()
 
-    repos = Github_Repos(user_config_dir, user_cache_dir)
+    user_cache_dir = appdirs.user_cache_dir('bcf')
+    repos = Github_Repos(user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
         # labels = ['Name:Bin:Version']
