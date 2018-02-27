@@ -14,11 +14,12 @@ import zipfile
 import shutil
 import platform
 import subprocess
-
 import appdirs
-from .github_repos import Github_Repos
-from . import flasher
-from .log import log
+import serial
+from distutils.version import LooseVersion
+from bcf.github_repos import Github_Repos
+from bcf import flasher
+from bcf.log import log
 
 try:
     from urllib import urlretrieve
@@ -29,6 +30,8 @@ __version__ = '@@VERSION@@'
 SKELETON_URL_ZIP = 'https://github.com/bigclownlabs/bcf-skeleton/archive/master.zip'
 SDK_URL_ZIP = 'https://github.com/bigclownlabs/bcf-sdk/archive/master.zip'
 SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
+
+pyserial_34 = LooseVersion(serial.VERSION) >= LooseVersion("3.4.0")
 
 user_cache_dir = appdirs.user_cache_dir('bcf')
 user_config_dir = appdirs.user_config_dir('bcf')
@@ -93,8 +96,11 @@ def download_url(url, use_cache=True):
     print('download firmware from', url)
     print('save as', filename_bin)
 
-    urlretrieve(url, filename_bin, reporthook=download_url_reporthook)
-
+    try:
+        urlretrieve(url, filename_bin, reporthook=download_url_reporthook)
+    except Exception as e:
+        print("Firmware download problem:", e.args[0])
+        sys.exit(1)
     return filename_bin
 
 
@@ -116,7 +122,14 @@ def command_devices(verbose=False, include_links=False):
     elif os.name == 'posix':
         from serial.tools.list_ports_posix import comports
 
-    for port, desc, hwid in sorted(comports(include_links=include_links)):
+    if pyserial_34:
+        ports = comports(include_links=include_links)
+    else:
+        ports = comports()
+
+    sorted(ports)
+
+    for port, desc, hwid in ports:
         sys.stdout.write("{:20}\n".format(port))
         if verbose:
             sys.stdout.write("    desc: {}\n".format(desc))
@@ -215,7 +228,7 @@ def main():
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
     subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
-    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices')
+    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices' if pyserial_34 else argparse.SUPPRESS)
 
     subparsers['search'] = subparser.add_parser('search', help="search in firmware names and descriptions")
     subparsers['search'].add_argument('pattern', help='search pattern')
@@ -240,7 +253,6 @@ def main():
 
     subparsers['log'] = subparser.add_parser('log', help="show log")
     subparsers['log'].add_argument('--device', help='device', required=True)
-    log.add_arguments(subparsers['log'])
 
     subparsers['reset'] = subparser.add_parser('reset', help="reset core module, not work for r1.3")
     subparsers['reset'].add_argument('--device', help='device', required=True)
@@ -275,8 +287,7 @@ def main():
                         print(os.linesep)
         sys.exit()
 
-    user_cache_dir = appdirs.user_cache_dir('bcf')
-    repos = Github_Repos(user_cache_dir)
+    repos = Github_Repos(user_config_dir, user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
         # labels = ['Name:Bin:Version']
