@@ -66,12 +66,15 @@ class Github_Repos:
                     if description:
                         row.append(repo['description'])
 
-                    if search and search not in n and search not in repo['description']:
-                        continue
+                    if search:
+                        if search in n or (repo['description'] and search in repo['description']):
+                            table.append(row)
+                    else:
+                        table.append(row)
 
-                    table.append(row)
                 if not all:
                     break
+
         return table
 
     def get_firmware_list(self, show_pre_release=False):
