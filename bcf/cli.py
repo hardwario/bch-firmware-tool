@@ -253,6 +253,7 @@ def main():
 
     subparsers['log'] = subparser.add_parser('log', help="show log")
     subparsers['log'].add_argument('--device', help='device', required=True)
+    log.add_arguments(subparsers['log'])
 
     subparsers['reset'] = subparser.add_parser('reset', help="reset core module, not work for r1.3")
     subparsers['reset'].add_argument('--device', help='device', required=True)
