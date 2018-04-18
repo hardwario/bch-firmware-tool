@@ -27,9 +27,11 @@ except ImportError:  # Python 3
     from urllib.request import urlretrieve
 
 __version__ = '@@VERSION@@'
-SKELETON_URL_ZIP = 'https://github.com/bigclownlabs/bcf-skeleton/archive/master.zip'
-SDK_URL_ZIP = 'https://github.com/bigclownlabs/bcf-sdk/archive/master.zip'
+SKELETON_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-skeleton/zip/master'
+SDK_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-sdk/zip/master'
 SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
+VSCODE_GIT = 'https://github.com/bigclownlabs/bcf-vscode.git'
+VSCODE_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-vscode/zip/master'
 
 pyserial_34 = LooseVersion(serial.VERSION) >= LooseVersion("3.4.0")
 
@@ -359,6 +361,7 @@ def main():
         shutil.move(skeleton_path, name)
 
         os.rmdir(os.path.join(name, 'sdk'))
+        os.rmdir(os.path.join(name, '.vscode'))
         os.chdir(name)
 
         if args.no_git:
@@ -366,14 +369,20 @@ def main():
             zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
             zip_ref.extractall(tmp_dir)
             zip_ref.close()
-
             sdk_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
             shutil.move(sdk_path, 'sdk')
 
-        else:
+            sdk_zip_filename = download_url(VSCODE_URL_ZIP)
+            zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
+            zip_ref.extractall(tmp_dir)
+            zip_ref.close()
+            sdk_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+            shutil.move(sdk_path, '.vscode')
 
+        else:
             os.system('git init')
             os.system('git submodule add --depth 1 "' + SDK_GIT + '" sdk')
+            os.system('git submodule add --depth 1 "' + VSCODE_GIT + '" .vscode')
 
         os.rmdir(tmp_dir)
 
