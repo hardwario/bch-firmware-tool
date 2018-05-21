@@ -200,8 +200,8 @@ def command_reset(args):
 
 
 def test_log_argumensts(args, parser):
-    if not args.log and (args.time or args.no_color or args.record):
-        parser.error('--log is required when use --time or --no-color or --record.')
+    if not args.log and (args.time or args.no_color or args.raw or args.record):
+        parser.error('--log is required when use --time or --no-color or --raw or --record.')
 
 
 def main():
