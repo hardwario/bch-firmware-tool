@@ -153,7 +153,7 @@ def command_flash(args, repos):
         filename_bin = download_url(firmware['download_url'])
 
     try:
-        flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu, run=not args.log)
+        flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu, run=not args.log, erase_eeprom=args.erase_eeprom)
         if args.log:
             log.run_args(args, reset=True)
     except KeyboardInterrupt as e:
@@ -227,6 +227,7 @@ def main():
     group.add_argument('--log', help='run log', action='store_true')
     group_log = subparsers['flash'].add_argument_group('optional for --log arguments')
     log.add_arguments(group_log)
+    subparsers['flash'].add_argument('--erase-eeprom', help='erase eeprom', action='store_true')
 
     subparsers['devices'] = subparser.add_parser('devices', help="show devices")
     subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')

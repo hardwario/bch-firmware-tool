@@ -4,11 +4,11 @@ from . import uart
 from . import dfu
 
 
-def flash(filename_bin, device=None, reporthook=None, use_dfu=False, run=True):
+def flash(filename_bin, device=None, reporthook=None, use_dfu=False, run=True, erase_eeprom=False):
     if use_dfu:
-        dfu.flash(filename_bin, reporthook=reporthook)
+        dfu.flash(filename_bin, reporthook=reporthook, erase_eeprom=erase_eeprom)
     else:
-        uart.flash(device, filename_bin, run=run, reporthook=reporthook)
+        uart.flash(device, filename_bin, run=run, reporthook=reporthook, erase_eeprom=erase_eeprom)
 
 
 def reset(device):
