@@ -320,9 +320,6 @@ def write(device, firmware, reporthook=None, api=None, start_address=0x08000000)
         else:
             raise Exception('Write error')
 
-    if reporthook:
-        reporthook('Verify', 0, length)
-
 
 def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000):
     if api is None:
@@ -378,7 +375,7 @@ def clone(device, filename, length, reporthook=None, api=None, start_address=0x0
     f.close()
 
 
-def flash(device, filename_bin, run=True, reporthook=None):
+def flash(device, filename_bin, run=True, reporthook=None, erase_eeprom=False):
 
     firmware = open(filename_bin, 'rb').read()
 
@@ -387,6 +384,9 @@ def flash(device, filename_bin, run=True, reporthook=None):
     _run_connect(api)
 
     length = len(firmware)
+
+    if erase_eeprom:
+        eeprom_erase(device, reporthook=reporthook, api=api)
 
     erase(device, length=length, reporthook=reporthook, api=api)
 
@@ -413,6 +413,61 @@ def get_list_devices():
     return table
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
-    run('on.bin', '/dev/ttyUSB0')
+def eeprom_clone(device, filename, length=6144, reporthook=None, api=None):
+    if api is None:
+        api = Flash_Serial(device)
+        _run_connect(api)
+
+    start_address = 0x08080000
+
+    f = open(filename, 'wb')
+    step = 128
+    for offset in range(0, length, step):
+        read_len = length - offset
+        if read_len > step:
+            read_len = step
+
+        for i in range(4):
+            data = api.read_memory(start_address + offset, read_len)
+            verify = api.read_memory(start_address + offset, read_len)
+            if data == verify:
+                f.write(data)
+                break
+            if i == 2:
+                _run_connect(api)
+        else:
+            raise Exception('not match')
+
+        if reporthook:
+            reporthook('eeprom clone', offset + read_len, length)
+
+    f.close()
+
+
+def eeprom_erase(device, reporthook=None, api=None):
+    if api is None:
+        api = Flash_Serial(device)
+        _run_connect(api)
+
+    length = 6144
+
+    start_address = 0x08080000
+
+    if reporthook:
+        reporthook('Erase eeprom ', 0, length)
+
+    step = 128
+    data = bytearray([0xff] * 128)
+    for offset in range(0, length, step):
+        write_len = length - offset
+        if write_len > step:
+            write_len = step
+        for i in range(4):
+            if api.write_memory(start_address + offset, data):
+                if reporthook:
+                    reporthook('Erase eeprom ', offset + write_len, length)
+                break
+            if i == 2:
+                _run_connect(api)
+        else:
+            raise Exception('Write error')
