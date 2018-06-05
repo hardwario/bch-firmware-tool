@@ -6,6 +6,7 @@ import sys
 import os
 import platform
 import time
+import tempfile
 
 dfu = "dfu-util"
 
@@ -49,6 +50,7 @@ help_url = "https://www.bigclown.com/doc/tutorials/toolchain-guide/#windows-dfu-
 
 
 def call(cmd, title, reporthook):
+    # print (' '. join([dfu] + cmd))
     try:
         proc = subprocess.Popen([dfu] + cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     except Exception as identifier:
@@ -84,14 +86,6 @@ def call(cmd, title, reporthook):
     if isinstance(out, bytes):
         out = out.decode()
 
-    return out
-
-
-def flash(filename_bin, reporthook):
-    cmd = ["-s", "0x08000000:leave", "-d", "0483:df11", "-a", "0", "-D", filename_bin]
-
-    out = call(cmd, "Flash", reporthook)
-
     if "Cannot open DFU device 0483:df11" in out:
         if sys.platform == 'win32':
             with open("zadig.ini", "w") as f:
@@ -107,6 +101,46 @@ def flash(filename_bin, reporthook):
 
     if "No DFU capable USB device available" in out:
         raise Exception(dfu_help)
+
+    return out
+
+
+def flash(filename_bin, reporthook, erase_eeprom=False):
+    if erase_eeprom:
+        eeprom_erase(reporthook)
+        print()
+        print("Please switch the core back to DFU mode")
+        i = 9
+        while i > 0:
+            sys.stdout.write(str(i))
+            sys.stdout.write('\r\r')
+            sys.stdout.flush()
+            time.sleep(1)
+            if get_list_devices():
+                print()
+                break
+            i -= 1
+
+    cmd = ["-s", "0x08000000:leave", "-d", "0483:df11", "-a", "0", "-D", filename_bin]
+
+    out = call(cmd, "Flash", reporthook)
+
+    if "File downloaded successfully" not in out:
+        raise Exception("Error \nlog: \n\n" + out)
+
+
+def eeprom_erase(reporthook=None):
+
+    fd, tmpfile = tempfile.mkstemp()
+    f = os.fdopen(fd, "w+b")
+    f.write(bytearray([0xff] * 6144))
+    f.close()
+
+    cmd = ["-s", "0x08080000:leave", "-d", "0483:df11", "-a", "2", "-D", tmpfile]
+
+    out = call(cmd, "Erase eeprom", reporthook)
+
+    os.unlink(tmpfile)
 
     if "File downloaded successfully" not in out:
         raise Exception("Error \nlog: \n\n" + out)
