@@ -386,7 +386,7 @@ def flash(device, filename_bin, run=True, reporthook=None, erase_eeprom=False):
     length = len(firmware)
 
     if erase_eeprom:
-        eeprom_erase(device, reporthook=reporthook, api=api)
+        eeprom_erase(device, reporthook=reporthook, run=False, api=api)
 
     erase(device, length=length, reporthook=reporthook, api=api)
 
@@ -444,7 +444,7 @@ def eeprom_clone(device, filename, length=6144, reporthook=None, api=None):
     f.close()
 
 
-def eeprom_erase(device, reporthook=None, api=None):
+def eeprom_erase(device, reporthook=None, run=True, api=None):
     if api is None:
         api = Flash_Serial(device)
         _run_connect(api)
@@ -471,3 +471,6 @@ def eeprom_erase(device, reporthook=None, api=None):
                 _run_connect(api)
         else:
             raise Exception('Write error')
+
+    if run:
+        api.go(0x08000000)

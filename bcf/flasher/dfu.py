@@ -138,7 +138,13 @@ def eeprom_erase(reporthook=None):
 
     cmd = ["-s", "0x08080000:leave", "-d", "0483:df11", "-a", "2", "-D", tmpfile]
 
-    out = call(cmd, "Erase eeprom", reporthook)
+    for i in range(3):
+        out = call(cmd, "Erase eeprom", reporthook)
+
+        if "Error during download get_status" in out:
+            time.sleep(1)
+        else:
+            break
 
     os.unlink(tmpfile)
 
