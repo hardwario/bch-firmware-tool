@@ -81,6 +81,19 @@ def print_progress_bar(title, progress, total, length=20):
         sys.stdout.flush()
 
 
+def try_run(fce, *args, **kwargs):
+    try:
+        fce(*args, **kwargs)
+    except KeyboardInterrupt as e:
+        sys.exit(1)
+    except Exception as e:
+        print()
+        print(e)
+        if os.getenv('DEBUG', False):
+            raise e
+        sys.exit(1)
+
+
 def download_url_reporthook(count, blockSize, totalSize):
     print_progress_bar('Download', count * blockSize, totalSize)
 
@@ -153,7 +166,9 @@ def command_flash(args, repos):
         filename_bin = download_url(firmware['download_url'])
 
     try:
-        flasher.flash(filename_bin, args.device, reporthook=print_progress_bar, use_dfu=args.dfu, run=not args.log, erase_eeprom=args.erase_eeprom)
+        device = 'dfu' if args.dfu else args.device
+
+        flasher.flash(filename_bin, device, reporthook=print_progress_bar, run=not args.log, erase_eeprom=args.erase_eeprom)
         if args.log:
             log.run_args(args, reset=True)
     except KeyboardInterrupt as e:
@@ -197,6 +212,12 @@ def command_reset(args):
         if os.getenv('DEBUG', False):
             raise e
         sys.exit(1)
+
+
+def command_eeprom(args):
+    device = 'dfu' if args.dfu else args.device
+    if args.erase:
+        try_run(flasher.eeprom_erase, device, reporthook=print_progress_bar)
 
 
 def test_log_argumensts(args, parser):
@@ -263,6 +284,12 @@ def main():
     subparsers['reset'].add_argument('--log', help='run log', action='store_true')
     group_log = subparsers['reset'].add_argument_group('optional for --log arguments')
     log.add_arguments(group_log)
+
+    subparsers['eeprom'] = subparser.add_parser('eeprom', help="eeprom")
+    subparsers['eeprom'].add_argument('--device', help='device', required='--dfu' not in sys.argv)
+    subparsers['eeprom'].add_argument('--dfu', help='use dfu mode', action='store_true')
+    group = subparsers['eeprom'].add_mutually_exclusive_group()
+    group.add_argument('--erase', help='erase', action='store_true')
 
     subparser_help = subparser.add_parser('help', help="show help")
     subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
@@ -396,6 +423,9 @@ def main():
     elif args.command == 'reset':
         test_log_argumensts(args, subparsers['reset'])
         command_reset(args)
+
+    elif args.command == 'eeprom':
+        command_eeprom(args)
 
 
 if __name__ == '__main__':
