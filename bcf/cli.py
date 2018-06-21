@@ -390,6 +390,8 @@ def main():
 
         os.rmdir(os.path.join(name, 'sdk'))
         os.rmdir(os.path.join(name, '.vscode'))
+        os.unlink(os.path.join(name, '.gitmodules'))
+
         os.chdir(name)
 
         if args.no_git:
