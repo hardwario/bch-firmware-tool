@@ -17,7 +17,7 @@ import subprocess
 import appdirs
 import serial
 from distutils.version import LooseVersion
-from bcf.github_repos import Github_Repos
+from bcf.repos.github import Github as Github_Repos
 from bcf import flasher
 from bcf.log import log
 

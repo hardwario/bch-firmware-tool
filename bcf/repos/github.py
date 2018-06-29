@@ -14,7 +14,7 @@ else:
     from urllib import urlretrieve
 
 
-class Github_Repos:
+class Github:
 
     def __init__(self, user_config_dir, user_cache_dir):
         self._user_cache_dir = user_cache_dir

@@ -7,7 +7,7 @@ requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0', 'colorama']
 
 setup(
     name='bcf',
-    packages=["bcf", "bcf.flasher", "bcf.flasher.serialport", "bcf.log"],
+    packages=["bcf", "bcf.flasher", "bcf.flasher.serialport", "bcf.log", "bcf.repos"],
     version='@@VERSION@@',
     description='BigClown Firmware Tool.',
     author='HARDWARIO s.r.o.',
