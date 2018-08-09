@@ -57,7 +57,7 @@ class Github:
                     if firmware['name'].startswith(name) and firmware['name'].endswith(release['tag_name'] + ".bin"):
                         tmp = firmware['name'][:firmware['name'].rfind(release['tag_name']) - 1]
                     else:
-                        tmp = name + ':' + firmware['name']
+                        continue
 
                     n = 'bigclownlabs/' + tmp + ':' + release['tag_name']
 
