@@ -3,11 +3,11 @@
 
 from setuptools import setup, find_packages
 
-requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0', 'colorama']
+requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0', 'colorama', 'PyYAML>=3.11', 'schema>=0.6.7']
 
 setup(
     name='bcf',
-    packages=["bcf", "bcf.flasher", "bcf.flasher.serialport", "bcf.log", "bcf.repos"],
+    packages=["bcf", "bcf.flasher", "bcf.flasher.serialport", "bcf.log", "bcf.repos", "bcf.firmware"],
     version='@@VERSION@@',
     description='BigClown Firmware Tool.',
     author='HARDWARIO s.r.o.',
