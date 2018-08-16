@@ -10,7 +10,7 @@ from colorama import init, Fore, Style
 from ..flasher.serialport.ftdi import SerialPort
 
 BAUDRATE = 115200
-log_level_color_lut = {'D': Fore.MAGENTA, 'I': Fore.GREEN, 'W': Fore.YELLOW, 'E': Fore.RED}
+log_level_color_lut = {'X': Fore.BLUE, 'D': Fore.MAGENTA, 'I': Fore.GREEN, 'W': Fore.YELLOW, 'E': Fore.RED}
 
 
 def add_arguments(action):
