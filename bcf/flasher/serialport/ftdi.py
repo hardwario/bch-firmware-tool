@@ -114,20 +114,20 @@ class SerialPort:
     def boot_sequence(self):
         self.ser.rts = True
         self.ser.dtr = True
-        sleep(0.1)
+        sleep(0.01)
 
         self.ser.rts = True
         self.ser.dtr = False
-        sleep(0.1)
+        sleep(0.05)
 
         self.ser.dtr = True
         self.ser.rts = False
-        sleep(0.1)
+        sleep(0.05)
 
         self.ser.dtr = False
 
-    def reset_sequence(self):
+    def reset_sequence(self, timeout=0.1):
         self.ser.rts = True
         self.ser.dtr = False
-        sleep(0.1)
+        sleep(timeout)
         self.ser.rts = False

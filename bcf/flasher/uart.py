@@ -39,12 +39,11 @@ class Flash_Serial(object):
     def connect(self):
         if not self._connect:
             logging.debug('connect')
-            for i in range(3):
+            for i in range(6):
                 self._connect = self.start_bootloader()
                 if self._connect:
                     return True
                 logging.info('repeate reset')
-                sleep(0.5)
         return self._connect
 
     def set_disconnect(self):
@@ -55,18 +54,15 @@ class Flash_Serial(object):
         return self.connect()
 
     def start_bootloader(self):
+        self.ser.reset_input_buffer()
+        self.ser.reset_output_buffer()
         self.ser.boot_sequence()
+        sleep(0.05)
+        self.ser.write([0x7f])
+        self.ser.flush()
+        if self._wait_for_ack():
+            return True
 
-        sleep(0.001)
-
-        for i in range(5):
-            self.ser.reset_input_buffer()
-            self.ser.reset_output_buffer()
-            self.ser.write([0x7f])
-            self.ser.flush()
-            if self._wait_for_ack():
-                return True
-            sleep(0.01)
         return False
 
     def _read_data(self, length, start_ack=True, stop_ack=True):
