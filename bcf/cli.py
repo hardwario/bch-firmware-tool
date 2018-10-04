@@ -17,7 +17,7 @@ import subprocess
 import appdirs
 import serial
 from distutils.version import LooseVersion
-from bcf.repos.github import Github as Github_Repos
+from bcf.firmware.FirmwareList import FirmwareList
 from bcf import flasher
 from bcf.log import log
 
@@ -124,8 +124,8 @@ class FirmwareChoicesCompleter(object):
         self._find_bin = find_bin
 
     def __call__(self, **kwargs):
-        repos = Github_Repos(user_config_dir, user_cache_dir)
-        firmwares = repos.get_firmware_list()
+        fwlist = FirmwareList(user_cache_dir)
+        firmwares = fwlist.get_firmware_list()
         if self._find_bin:
             firmwares += glob.glob('*.bin')
         return firmwares
@@ -151,7 +151,7 @@ def command_devices(verbose=False, include_links=False):
             sys.stdout.write("    hwid: {}\n".format(hwid))
 
 
-def command_flash(args, repos):
+def command_flash(args, fwlist):
     if args.what.startswith('http'):
         filename_bin = download_url(args.what)
 
@@ -159,11 +159,11 @@ def command_flash(args, repos):
         filename_bin = args.what
 
     else:
-        firmware = repos.get_firmware(args.what)
+        firmware = fwlist.get_firmware(args.what)
         if not firmware:
             print('Firmware not found, try updating first')
             sys.exit(1)
-        filename_bin = download_url(firmware['download_url'])
+        filename_bin = download_url(firmware['url'])
 
     try:
         device = 'dfu' if args.dfu else args.device
@@ -318,14 +318,14 @@ def main():
                         print(os.linesep)
         sys.exit()
 
-    repos = Github_Repos(user_config_dir, user_cache_dir)
+    fwlist = FirmwareList(user_cache_dir)
 
     if args.command == 'list' or args.command == 'search':
         # labels = ['Name:Bin:Version']
         # if args.description:
         #     labels.append('description')
 
-        rows = repos.get_firmware_table(search=args.pattern if args.command == 'search' else None,
+        rows = fwlist.get_firmware_table(search=args.pattern if args.command == 'search' else None,
                                         all=args.all,
                                         description=args.description,
                                         show_pre_release=args.show_pre_release)
@@ -339,33 +339,33 @@ def main():
 
     elif args.command == 'flash':
         test_log_argumensts(args, subparsers['flash'])
-        command_flash(args, repos)
+        command_flash(args, fwlist)
 
     elif args.command == 'update':
-        repos.update()
+        fwlist.update()
 
     elif args.command == 'devices':
         command_devices(verbose=args.verbose, include_links=args.include_links)
 
     elif args.command == 'pull':
         if args.what == 'last':
-            for name in repos.get_firmware_list():
-                firmware = repos.get_firmware(name)
+            for name in fwlist.get_firmware_list():
+                firmware = fwlist.get_firmware(name)
                 print('pull', name)
-                download_url(firmware['download_url'], True)
+                download_url(firmware['url'], True)
                 print()
 
         elif args.what.startswith('http'):
             download_url(args.what, True)
         else:
-            firmware = repos.get_firmware(args.what)
+            firmware = fwlist.get_firmware(args.what)
             if not firmware:
                 print('Firmware not found, try updating first, command: bcf update')
                 sys.exit(1)
-            download_url(firmware['download_url'], True)
+            download_url(firmware['url'], True)
 
     elif args.command == 'clean':
-        repos.clear()
+        fwlist.clear()
         for filename in os.listdir(user_cache_dir):
             os.unlink(os.path.join(user_cache_dir, filename))
 
