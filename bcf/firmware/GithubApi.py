@@ -84,7 +84,7 @@ class GithubApi:
             if repo['name'].startswith("bcf-") and repo['name'] not in {"bcf-sdk", "bcf-vscode", "bcf-skeleton"}:
                 logging.debug('repo %s/%s', owner, repo['name'])
 
-                firmware_list += self._make_firmware_list(owner, repo['name'])
+                firmware_list += self._make_firmware_list(owner, repo['name'], repo_obj=repo)
 
         return firmware_list
 
@@ -97,7 +97,7 @@ class GithubApi:
 
         return self._make_firmware_list(owner, repo)
 
-    def _make_firmware_list(self, owner, repo):
+    def _make_firmware_list(self, owner, repo, repo_obj=None):
 
         owner_repo = owner + '/' + repo
 
@@ -105,7 +105,7 @@ class GithubApi:
 
         firmware = {}
         firmware['name'] = ""
-        firmware['description'] = ""
+        firmware['description'] = repo_obj['description'] if repo_obj else ""
         firmware['repository'] = "https://github.com/" + owner_repo
         firmware['versions'] = []
 
