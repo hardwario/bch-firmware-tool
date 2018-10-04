@@ -11,13 +11,7 @@ import copy
 import logging
 import re
 import yaml
-
-if sys.version_info[0] == 3:
-    from urllib.request import urlopen, urlretrieve, Request
-    from urllib.error import HTTPError
-else:
-    from urllib2 import urlopen, HTTPError, Request
-    from urllib import urlretrieve
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +19,16 @@ logger = logging.getLogger(__name__)
 class GithubApi:
 
     def __init__(self, oauth_token=None, cache_dir=None):
-        self._oauth_token = oauth_token
         self._cache_dir = cache_dir
 
         self._response_headers = None
 
         if self._cache_dir and not os.path.exists(self._cache_dir):
             os.makedirs(self._cache_dir)
+
+        if oauth_token:
+            self._session = requests.Session()
+            self._session.headers.update({'Authorization': "token " + oauth_token})
 
     def get_cache_dir(self):
         return self._cache_dir
@@ -46,32 +43,27 @@ class GithubApi:
                 self._response_headers = c['response_headers']
                 return c['data']
 
-        try:
-            headers = {}
-            if self._oauth_token:
-                headers["Authorization"] = "token " + self._oauth_token
-            req = Request(url, headers=headers)
-            response = urlopen(req)
-        except HTTPError as e:
-            if e.getcode() == 403:
-                print("Github API rate limit exceeded, more info https://developer.github.com/v3/#rate-limiting")
-                ts = e.headers.get('X-RateLimit-Reset', None)
-                if ts:
-                    print('Rate limit will be reset in', datetime.fromtimestamp(float(ts)))
-            else:
-                print(e)
-            sys.exit(1)
+        response = self._session.get(url)
 
         self._response_headers = dict(response.headers)
 
-        body = response.read()
+        if response.status_code == 200:
+            data = response.json()
 
-        data = json.loads(body.decode('utf-8'))
+            if self._cache_dir:
+                json.dump({"data": data, "response_headers": self._response_headers}, open(filename_cache, 'w'))
 
-        if self._cache_dir:
-            json.dump({"data": data, "response_headers": self._response_headers}, open(filename_cache, 'w'))
+            return data
 
-        return data
+        if response.status_code == 403:
+            print("Github API rate limit exceeded, more info https://developer.github.com/v3/#rate-limiting")
+            ts = self._response_headers.get('X-RateLimit-Reset', None)
+            if ts:
+                print('Rate limit will be reset in', datetime.fromtimestamp(float(ts)))
+                sys.exit(1)
+
+        print("Response status_code %d" % response.status_code)
+        sys.exit(1)
 
     def iter_repos(self, owner):
         page = 1
@@ -119,7 +111,8 @@ class GithubApi:
 
         for content in self.api_get("https://api.github.com/repos/" + owner_repo + "/contents"):
             if content["name"] == "meta.yml":
-                meta_yaml = yaml.load(urlopen(content['download_url']))
+                response = self._session.get(content['download_url'])
+                meta_yaml = yaml.safe_load(response.content)
                 firmware.update(meta_yaml)
 
         for release in self.api_get("https://api.github.com/repos/" + owner_repo + "/releases"):
