@@ -105,7 +105,7 @@ class GithubApi:
 
         firmware = {}
         firmware['name'] = ""
-        firmware['description'] = repo_obj['description'] if repo_obj else ""
+        firmware['description'] = repo_obj['description'] if repo_obj and repo_obj['description'] else ""
         firmware['repository'] = "https://github.com/" + owner_repo
         firmware['versions'] = []
 
