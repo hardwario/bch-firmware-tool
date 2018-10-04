@@ -1,6 +1,7 @@
 appdirs>=1.0
 argcomplete>=1.0
 pyserial>=3.0
-colorama
+colorama>=0.3
 PyYAML>=3.11
 schema>=0.6.7
+requests>=2.18

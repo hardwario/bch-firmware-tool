@@ -3,7 +3,7 @@
 
 from setuptools import setup, find_packages
 
-requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0', 'colorama', 'PyYAML>=3.11', 'schema>=0.6.7']
+requirements = ['appdirs>=1.4', 'argcomplete>=1.8', 'pyserial>=3.0', 'colorama>=0.3', 'PyYAML>=3.11', 'schema>=0.6.7', 'requests>=2.18']
 
 setup(
     name='bcf',
