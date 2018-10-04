@@ -16,15 +16,11 @@ import platform
 import subprocess
 import appdirs
 import serial
+import requests
 from distutils.version import LooseVersion
 from bcf.firmware.FirmwareList import FirmwareList
 from bcf import flasher
 from bcf.log import log
-
-try:
-    from urllib import urlretrieve
-except ImportError:  # Python 3
-    from urllib.request import urlretrieve
 
 __version__ = '@@VERSION@@'
 SKELETON_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-skeleton/zip/master'
@@ -112,7 +108,18 @@ def download_url(url, use_cache=True):
     print('save as', filename_bin)
 
     try:
-        urlretrieve(url, filename_bin, reporthook=download_url_reporthook)
+        response = requests.get(url, stream=True, allow_redirects=True)
+        total_length = response.headers.get('content-length')
+        with open(filename_bin, "wb") as f:
+            if total_length is None:  # no content length header
+                f.write(response.content)
+            else:
+                dl = 0
+                total_length = int(total_length)
+                for data in response.iter_content(chunk_size=4096):
+                    dl += len(data)
+                    f.write(data)
+                    download_url_reporthook(1, dl, total_length)
     except Exception as e:
         print("Firmware download problem:", e.args[0])
         sys.exit(1)
@@ -326,9 +333,9 @@ def main():
         #     labels.append('description')
 
         rows = fwlist.get_firmware_table(search=args.pattern if args.command == 'search' else None,
-                                        all=args.all,
-                                        description=args.description,
-                                        show_pre_release=args.show_pre_release)
+                                         all=args.all,
+                                         description=args.description,
+                                         show_pre_release=args.show_pre_release)
 
         if rows:
             print_table([], rows)
