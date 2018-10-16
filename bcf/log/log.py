@@ -1,24 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
 import sys
 import os
 import serial
 from datetime import datetime
 from time import sleep
+import click
 from colorama import init, Fore, Style
 from ..flasher.serialport.ftdi import SerialPort
+
 
 BAUDRATE = 115200
 log_level_color_lut = {'X': Fore.BLUE, 'D': Fore.MAGENTA, 'I': Fore.GREEN, 'W': Fore.YELLOW, 'E': Fore.RED}
 
 
-def add_arguments(action):
-    action.add_argument('--time', help='show time', action='store_true')
-    action.add_argument('--no-color', help='disable color', action='store_true')
-    action.add_argument('--raw', help='', action='store_true')
-    action.add_argument('--record', nargs='?', help="record to file", metavar='FILE')
-    return action
+def test(ctx, param, value):
+    if value and '--log' not in sys.argv:
+        ctx.fail('-log is required when use --time or --no-color or --raw or --record.')
+    return value
+
+
+def click_options(f):
+    f = click.option('--time', is_flag=True, help='Show time.', callback=test)(f)
+    f = click.option('--no-color', is_flag=True, help='Disable color.', callback=test)(f)
+    f = click.option('--raw', is_flag=True, help='Print raw .', callback=test)(f)
+    return click.option('--record', help='Record to file.', callback=test)(f)
 
 
 class Log(object):
@@ -39,26 +45,44 @@ class Log(object):
             return ""
 
     def print(self, line):
-        index = line.find("<")
-        if index < 0 and not self._raw:
-            return
+        if line[0] == '#' and line.endswith('\r\n'):
+            line = line[1:].strip()
 
-        time = self.get_time_str()
+            index = line.find("<")
 
-        if self._record_file:
-            self._record_file.write(time + line + os.linesep)
-            self._record_file.flush()
-
-        if self._no_color:
-            print(time + line)
-        else:
             if index < 0:
-                print(time + line)
+                return
 
+            time = self.get_time_str()
+
+            if self._record_file:
+                self._record_file.write(time + line + os.linesep)
+                self._record_file.flush()
+
+            if self._no_color:
+                click.echo(time + line)
             else:
-                level_char = line[index + 1]
+                if index < 0:
+                    click.echo(time + line)
 
-                print(log_level_color_lut[level_char] + time + line[:index + 3] + Style.RESET_ALL + line[index + 3:])
+                else:
+                    color = ""
+                    try:
+                        level_char = line[index + 1]
+                        color = log_level_color_lut[level_char]
+                    except Exception as e:
+                        pass
+
+                    click.echo(color + time + line[:index + 3] + Style.RESET_ALL + line[index + 3:])
+
+        elif self._raw:
+            time = self.get_time_str()
+
+            if self._record_file:
+                self._record_file.write(time + line)
+                self._record_file.flush()
+
+            click.echo(time + line.rstrip())
 
 
 class SerialPortLog(Log):
@@ -86,10 +110,7 @@ class SerialPortLog(Log):
             except Exception as e:
                 continue
 
-            if line[0] == '#' and line.endswith('\r\n'):
-                self.print(line[1:].strip())
-            else:
-                self.print(line.rstrip())
+            self.print(line)
 
 
 def run(device, show_time=True, no_color=False, raw=False, record_file=None, reset=False):
@@ -100,18 +121,12 @@ def run(device, show_time=True, no_color=False, raw=False, record_file=None, res
     log.run()
 
 
-def run_args(args, reset=False):
-
+def run_args(device, args, reset=False):
     try:
-        record_file = open(args.record, 'a') if args.record else None
+        record_file = open(args['record'], 'a') if args['record'] else None
 
-        if args.device:
-            run(args.device, args.time, args.no_color, args.raw, record_file, reset)
+        if device:
+            run(device, args['time'], args['no_color'], args['raw'], record_file, reset)
 
     except KeyboardInterrupt as e:
-        sys.exit(1)
-    except Exception as e:
-        print(e)
-        if os.getenv('DEBUG', False):
-            raise e
         sys.exit(1)
