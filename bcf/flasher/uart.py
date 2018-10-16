@@ -267,7 +267,7 @@ def _run_connect(api):
             i += 1
 
 
-def erase(device, length=196608, reporthook=None, api=None):
+def erase(device, length=196608, reporthook=None, api=None, label='Erase '):
     if api is None:
         api = Flash_Serial(device)
         _run_connect(api)
@@ -277,7 +277,7 @@ def erase(device, length=196608, reporthook=None, api=None):
         pages = 1536
 
     if reporthook:
-        reporthook('Erase ', 0, pages)
+        reporthook(label, 0, pages)
 
     for page_start in range(0, pages, 80):
         page_stop = page_start + 80
@@ -288,10 +288,10 @@ def erase(device, length=196608, reporthook=None, api=None):
             raise Exception('Errase error')
 
         if reporthook:
-            reporthook('Erase ', page_stop, pages)
+            reporthook(label, page_stop, pages)
 
 
-def write(device, firmware, reporthook=None, api=None, start_address=0x08000000):
+def write(device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Write '):
     if api is None:
         api = Flash_Serial(device)
         _run_connect(api)
@@ -299,7 +299,7 @@ def write(device, firmware, reporthook=None, api=None, start_address=0x08000000)
     length = len(firmware)
 
     if reporthook:
-        reporthook('Write ', 0, length)
+        reporthook(label, 0, length)
 
     step = 128
     for offset in range(0, length, step):
@@ -309,7 +309,7 @@ def write(device, firmware, reporthook=None, api=None, start_address=0x08000000)
         for i in range(4):
             if api.write_memory(start_address + offset, firmware[offset:offset + write_len]):
                 if reporthook:
-                    reporthook('Write ', offset + write_len, length)
+                    reporthook(label, offset + write_len, length)
                 break
             if i == 2:
                 _run_connect(api)
@@ -317,7 +317,7 @@ def write(device, firmware, reporthook=None, api=None, start_address=0x08000000)
             raise Exception('Write error')
 
 
-def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000):
+def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Verify'):
     if api is None:
         api = Flash_Serial(device)
         _run_connect(api)
@@ -339,10 +339,10 @@ def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000
             raise Exception('not match')
 
         if reporthook:
-            reporthook('Verify', offset + read_len, length)
+            reporthook(label, offset + read_len, length)
 
 
-def clone(device, filename, length, reporthook=None, api=None, start_address=0x08000000):
+def clone(device, filename, length, reporthook=None, api=None, start_address=0x08000000, label='Clone'):
     if api is None:
         api = Flash_Serial(device)
         _run_connect(api)
@@ -366,7 +366,7 @@ def clone(device, filename, length, reporthook=None, api=None, start_address=0x0
             raise Exception('not match')
 
         if reporthook:
-            reporthook('Clone', offset + read_len, length)
+            reporthook(label, offset + read_len, length)
 
     f.close()
 
