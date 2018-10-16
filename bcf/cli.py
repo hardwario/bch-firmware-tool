@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# PYTHON_ARGCOMPLETE_OK
 from __future__ import print_function, unicode_literals
-import argcomplete
-import argparse
+import click
 import os
 import sys
-import logging
-import hashlib
 import glob
 import tempfile
 import zipfile
 import shutil
-import platform
 import subprocess
-import appdirs
 import serial
-import requests
-from distutils.version import LooseVersion
 from bcf.firmware.FirmwareList import FirmwareList
 from bcf import flasher
-from bcf.log import log
+from bcf.log import log as bcflog
+from bcf.utils import *
 
 __version__ = '@@VERSION@@'
 SKELETON_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-skeleton/zip/master'
@@ -29,155 +22,137 @@ SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
 VSCODE_GIT = 'https://github.com/bigclownlabs/bcf-vscode.git'
 VSCODE_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-vscode/zip/master'
 
-pyserial_34 = LooseVersion(serial.VERSION) >= LooseVersion("3.4.0")
 
-user_cache_dir = appdirs.user_cache_dir('bcf')
-user_config_dir = appdirs.user_config_dir('bcf')
-
-
-def print_table(labels, rows):
-    if not labels and not rows:
-        return
-
-    max_lengths = [0] * (len(rows[0]) if rows else len(labels))
-    for i, label in enumerate(labels):
-        max_lengths[i] = len(label)
-
-    for row in rows:
-        for i, v in enumerate(row):
-            if len(v) > max_lengths[i]:
-                max_lengths[i] = len(v)
-
-    row_format = "{:<" + "}  {:<".join(map(str, max_lengths)) + "}"
-
-    if labels:
-        print(row_format.format(*labels))
-        print("=" * (sum(max_lengths) + len(labels) * 2))
-
-    for row in rows:
-        print(row_format.format(*row))
+@click.group()
+@click.option('--device', '-d', type=str, help='Device path.')
+@click.version_option(version=__version__)
+@click.pass_context
+def cli(ctx, device=None):
+    '''BigClown Firmware Tool.'''
+    ctx.obj['device'] = device
 
 
-def print_progress_bar(title, progress, total, length=20):
-    filled_length = int(length * progress // total)
-    if filled_length < 0:
-        filled_length = 0
-    bar = '#' * filled_length
-    bar += '-' * (length - filled_length)
-    percent = 100 * (progress / float(total))
-    if percent > 100:
-        percent = 100
-    elif percent < 0:
-        percent = 0
-    sys.stdout.write('\r\r')
-    sys.stdout.write(title + ' [' + bar + '] ' + "{:5.1f}%".format(percent))
-    sys.stdout.flush()
-    if percent == 100:
-        sys.stdout.write('\n')
-        sys.stdout.flush()
+@cli.command('clean')
+def command_clean():
+    '''Clean cache'''
+    fwlist = FirmwareList(user_cache_dir)
+    fwlist.clear()
+    for filename in os.listdir(user_cache_dir):
+        os.unlink(os.path.join(user_cache_dir, filename))
 
 
-def try_run(fce, *args, **kwargs):
-    try:
-        fce(*args, **kwargs)
-    except KeyboardInterrupt as e:
-        sys.exit(1)
-    except Exception as e:
-        print()
-        print(e)
-        if os.getenv('DEBUG', False):
-            raise e
+@cli.command('create')
+@click.argument('name')
+@click.option('--no-git', is_flag=True, help='Disable git.')
+def command_create(name, no_git=False):
+    '''Create new firmware'''
+    if os.path.exists(name):
+        print('Directory already exists')
         sys.exit(1)
 
+    skeleton_zip_filename = download_url(SKELETON_URL_ZIP, use_cache=False)
+    click.echo()
 
-def download_url_reporthook(count, blockSize, totalSize):
-    print_progress_bar('Download', count * blockSize, totalSize)
+    tmp_dir = tempfile.mkdtemp()
 
+    zip_ref = zipfile.ZipFile(skeleton_zip_filename, 'r')
+    zip_ref.extractall(tmp_dir)
+    zip_ref.close()
 
-def download_url(url, use_cache=True):
-    if url.startswith("https://github.com/bigclownlabs/bcf-"):
-        filename = url.rsplit('/', 1)[1]
+    skeleton_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+    shutil.move(skeleton_path, name)
+
+    os.rmdir(os.path.join(name, 'sdk'))
+    os.rmdir(os.path.join(name, '.vscode'))
+    os.unlink(os.path.join(name, '.gitmodules'))
+
+    os.chdir(name)
+
+    if args.no_git:
+        sdk_zip_filename = download_url(SDK_URL_ZIP, use_cache=False)
+        zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
+        zip_ref.extractall(tmp_dir)
+        zip_ref.close()
+        sdk_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+        shutil.move(sdk_path, 'sdk')
+
+        sdk_zip_filename = download_url(VSCODE_URL_ZIP, use_cache=False)
+        zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
+        zip_ref.extractall(tmp_dir)
+        zip_ref.close()
+        sdk_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+        shutil.move(sdk_path, '.vscode')
+
     else:
-        filename = hashlib.sha256(url.encode()).hexdigest()
-    filename_bin = os.path.join(user_cache_dir, filename)
+        os.system('git init')
+        os.system('git submodule add --depth 1 "' + SDK_GIT + '" sdk')
+        os.system('git submodule add --depth 1 "' + VSCODE_GIT + '" .vscode')
 
-    if use_cache and os.path.exists(filename_bin):
-        return filename_bin
-
-    print('download firmware from', url)
-    print('save as', filename_bin)
-
-    try:
-        response = requests.get(url, stream=True, allow_redirects=True)
-        total_length = response.headers.get('content-length')
-        with open(filename_bin, "wb") as f:
-            if total_length is None:  # no content length header
-                f.write(response.content)
-            else:
-                dl = 0
-                total_length = int(total_length)
-                for data in response.iter_content(chunk_size=4096):
-                    dl += len(data)
-                    f.write(data)
-                    download_url_reporthook(1, dl, total_length)
-    except Exception as e:
-        print("Firmware download problem:", e.args[0])
-        sys.exit(1)
-    return filename_bin
+    os.rmdir(tmp_dir)
 
 
-class FirmwareChoicesCompleter(object):
-    def __init__(self, find_bin):
-        self._find_bin = find_bin
-
-    def __call__(self, **kwargs):
-        fwlist = FirmwareList(user_cache_dir)
-        firmwares = fwlist.get_firmware_list()
-        if self._find_bin:
-            firmwares += glob.glob('*.bin')
-        return firmwares
-
-
+@cli.command('devices')
+@click.option('-v', '--verbose', is_flag=True, help='Show more messages')
+@click.option('-s', '--include-links', is_flag=True, help='Include entries that are symlinks to real devices')
 def command_devices(verbose=False, include_links=False):
-    if os.name == 'nt' or sys.platform == 'win32':
-        from serial.tools.list_ports_windows import comports
-    elif os.name == 'posix':
-        from serial.tools.list_ports_posix import comports
-
-    if pyserial_34:
-        ports = comports(include_links=include_links)
-    else:
-        ports = comports()
-
-    sorted(ports)
-
-    for port, desc, hwid in ports:
+    '''Print available devices.'''
+    for port, desc, hwid in get_devices(include_links):
         sys.stdout.write("{:20}\n".format(port))
         if verbose:
             sys.stdout.write("    desc: {}\n".format(desc))
             sys.stdout.write("    hwid: {}\n".format(hwid))
 
 
-def command_flash(args, fwlist):
-    if args.what.startswith('http'):
-        filename_bin = download_url(args.what)
+@cli.command('eeprom')
+@click.option('-d', '--device', type=str, help='Device path.')
+@click.option('--erase', is_flag=True, help='Erase eeprom memory.')
+@click.option('--dfu', is_flag=True, help='Use dfu mode')
+@click.pass_context
+def command_eeprom(ctx, device, erase=False, dfu=False):
+    if device is None:
+        device = ctx.obj['device']
 
-    elif os.path.exists(args.what) and os.path.isfile(args.what):
-        filename_bin = args.what
+    device = select_device('dfu' if dfu else device)
+    if erase:
+        flasher.eeprom_erase(device, reporthook=print_progress_bar)
+
+
+@cli.command('flash')
+@click.argument('what', metavar="<firmware from list|file|url>")
+@click.option('-d', '--device', type=str, help='Device path.')
+@click.option('--log', is_flag=True, help='Show all releases')
+@click.option('--dfu', is_flag=True, help='Use dfu mode')
+@click.option('--erase-eeprom', is_flag=True, help='Erase eeprom')
+@bcflog.click_options
+@click.pass_context
+def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=True, **args):
+    '''Flash firmware.'''
+    if device is None:
+        device = ctx.obj['device']
+
+    if log and dfu or device == 'dfu':
+        raise Exception("Sorry, Core Module r1.3 doesn't support log functionality.")
+
+    if what.startswith('http'):
+        filename_bin = download_url(what)
+
+    elif os.path.exists(what) and os.path.isfile(what):
+        filename_bin = what
 
     else:
-        firmware = fwlist.get_firmware(args.what)
+        fwlist = FirmwareList(user_cache_dir)
+        firmware = fwlist.get_firmware(what)
         if not firmware:
-            print('Firmware not found, try updating first')
+            print('Firmware not found, try updating first, command: bcf update')
             sys.exit(1)
         filename_bin = download_url(firmware['url'])
 
     try:
-        device = 'dfu' if args.dfu else args.device
+        device = select_device('dfu' if dfu else device)
 
-        flasher.flash(filename_bin, device, reporthook=print_progress_bar, run=not args.log, erase_eeprom=args.erase_eeprom)
-        if args.log:
-            log.run_args(args, reset=True)
+        flasher.flash(filename_bin, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom)
+        if log:
+            bcflog.run_args(device, args, reset=True)
     except KeyboardInterrupt as e:
         print("")
         sys.exit(1)
@@ -205,240 +180,142 @@ def command_flash(args, fwlist):
         sys.exit(1)
 
 
-def command_reset(args):
-    try:
-        if args.log:
-            log.run_args(args, reset=True)
-        else:
-            flasher.reset(args.device)
+@cli.command('help')
+@click.argument('command', required=False)
+@click.pass_context
+def command_help(ctx, command):
+    '''Show help.'''
+    cmd = cli.get_command(ctx, command)
 
-    except KeyboardInterrupt as e:
-        sys.exit(1)
-    except Exception as e:
-        print(e)
-        if os.getenv('DEBUG', False):
-            raise e
-        sys.exit(1)
+    if cmd is None:
+        cmd = cli
+
+    click.echo(cmd.get_help(ctx))
 
 
-def command_eeprom(args):
-    device = 'dfu' if args.dfu else args.device
-    if args.erase:
-        try_run(flasher.eeprom_erase, device, reporthook=print_progress_bar)
-
-
-def test_log_argumensts(args, parser):
-    if not args.log and (args.time or args.no_color or args.raw or args.record):
-        parser.error('--log is required when use --time or --no-color or --raw or --record.')
-
-
-def main():
-    parser = argparse.ArgumentParser(description='BigClown Firmware Tool')
-
-    subparsers = {}
-    subparser = parser.add_subparsers(dest='command', metavar='COMMAND')
-
-    subparsers['update'] = subparser.add_parser('update', help="update list of available firmware")
-
-    subparsers['list'] = subparser.add_parser('list', help="list firmware")
-    subparsers['list'].add_argument('--all', help='show all releases', action='store_true')
-    subparsers['list'].add_argument('--description', help='show description', action='store_true')
-    subparsers['list'].add_argument('--show-pre-release', help='show pre-release version', action='store_true')
-
-    subparsers['flash'] = subparser.add_parser('flash', help="flash firmware",
-                                               usage='%(prog)s\n       %(prog)s <firmware>\n       %(prog)s <file>\n       %(prog)s <url>')
-    subparsers['flash'].add_argument('what', help=argparse.SUPPRESS, nargs='?',
-                                     default="firmware.bin").completer = FirmwareChoicesCompleter(True)
-    subparsers['flash'].add_argument('--device', help='device', required='--dfu' not in sys.argv)
-    group = subparsers['flash'].add_mutually_exclusive_group()
-    group.add_argument('--dfu', help='use dfu mode', action='store_true')
-    group.add_argument('--log', help='run log', action='store_true')
-    group_log = subparsers['flash'].add_argument_group('optional for --log arguments')
-    log.add_arguments(group_log)
-    subparsers['flash'].add_argument('--erase-eeprom', help='erase eeprom', action='store_true')
-
-    subparsers['devices'] = subparser.add_parser('devices', help="show devices")
-    subparsers['devices'].add_argument('-v', '--verbose', action='store_true', help='show more messages')
-    subparsers['devices'].add_argument('-s', '--include-links', action='store_true', help='include entries that are symlinks to real devices' if pyserial_34 else argparse.SUPPRESS)
-
-    subparsers['search'] = subparser.add_parser('search', help="search in firmware names and descriptions")
-    subparsers['search'].add_argument('pattern', help='search pattern')
-    subparsers['search'].add_argument('--all', help='show all releases', action='store_true')
-    subparsers['search'].add_argument('--description', help='show description', action='store_true')
-    subparsers['search'].add_argument('--show-pre-release', help='show pre-release version', action='store_true')
-
-    subparsers['pull'] = subparser.add_parser('pull', help="pull firmware to cache",
-                                              usage='%(prog)s <firmware>\n       %(prog)s <url>')
-    subparsers['pull'].add_argument('what', help=argparse.SUPPRESS).completer = FirmwareChoicesCompleter(False)
-
-    subparsers['clean'] = subparser.add_parser('clean', help="clean cache")
-
-    subparsers['create'] = subparser.add_parser('create', help="create new firmware")
-    subparsers['create'].add_argument('name', help=argparse.SUPPRESS)
-    subparsers['create'].add_argument('--no-git', help='disable git', action='store_true')
-
-    subparsers['read'] = subparser.add_parser('read', help="download firmware to file")
-    subparsers['read'].add_argument('filename', help=argparse.SUPPRESS)
-    subparsers['read'].add_argument('--device', help='device', required=True)
-    subparsers['read'].add_argument('--length', help='length', default=196608, type=int)
-
-    subparsers['log'] = subparser.add_parser('log', help="show log")
-    subparsers['log'].add_argument('--device', help='device', required=True)
-    log.add_arguments(subparsers['log'])
-
-    subparsers['reset'] = subparser.add_parser('reset', help="reset core module, not work for r1.3")
-    subparsers['reset'].add_argument('--device', help='device', required=True)
-    subparsers['reset'].add_argument('--log', help='run log', action='store_true')
-    group_log = subparsers['reset'].add_argument_group('optional for --log arguments')
-    log.add_arguments(group_log)
-
-    subparsers['eeprom'] = subparser.add_parser('eeprom', help="eeprom")
-    subparsers['eeprom'].add_argument('--device', help='device', required='--dfu' not in sys.argv)
-    subparsers['eeprom'].add_argument('--dfu', help='use dfu mode', action='store_true')
-    group = subparsers['eeprom'].add_mutually_exclusive_group()
-    group.add_argument('--erase', help='erase', action='store_true')
-
-    subparser_help = subparser.add_parser('help', help="show help")
-    subparser_help.add_argument('what', help=argparse.SUPPRESS, nargs='?', choices=subparsers.keys())
-    subparser_help.add_argument('--all', help='show help for all commands', action='store_true')
-
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
-
-    argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-
-    if not args.command:
-        parser.print_help()
-        sys.exit()
-
-    if args.command == 'help':
-        if args.what:
-            subparsers[args.what].print_help()
-        else:
-            parser.print_help()
-            print("  --all          show help for all commands")
-            if args.all:
-                print("=" * 60 + os.linesep)
-                for subparser in subparser.choices:
-                    if subparser in subparsers:
-                        subparsers[subparser].print_help()
-                        print(os.linesep)
-        sys.exit()
-
+@cli.command('list')
+@click.option('--all', is_flag=True, help='Show all releases')
+@click.option('--description', is_flag=True, help='Show description')
+@click.option('--show-pre-release', is_flag=True, help='Show pre-release version')
+def command_list(all=False, description=False, show_pre_release=False):
+    '''List firmware.'''
     fwlist = FirmwareList(user_cache_dir)
+    rows = fwlist.get_firmware_table(all=all, description=description, show_pre_release=show_pre_release)
+    if rows:
+        print_table([], rows)
+    else:
+        click.echo('Empty list, try: bcf update')
 
-    if args.command == 'list' or args.command == 'search':
-        # labels = ['Name:Bin:Version']
-        # if args.description:
-        #     labels.append('description')
 
-        rows = fwlist.get_firmware_table(search=args.pattern if args.command == 'search' else None,
-                                         all=args.all,
-                                         description=args.description,
-                                         show_pre_release=args.show_pre_release)
+@cli.command('log')
+@click.option('-d', '--device', type=str, help='Device path.')
+@bcflog.click_options
+@click.pass_context
+def command_log(ctx, device=None, log=False, **args):
+    '''Show log.'''
+    if device is None:
+        device = ctx.obj['device']
+    if device == 'dfu':
+        raise Exception("Sorry, Core Module r1.3 doesn't support log functionality.")
 
-        if rows:
-            print_table([], rows)
-        elif args.command == 'list':
-            print('Nothing found, try updating first')
-        else:
-            print('Nothing found')
+    device = select_device(device)
+    bcflog.run_args(device, args, reset=False)
 
-    elif args.command == 'flash':
-        test_log_argumensts(args, subparsers['flash'])
-        command_flash(args, fwlist)
 
-    elif args.command == 'update':
-        fwlist.update()
+@cli.command('pull')
+@click.argument('what', metavar="<firmware from list|url>")
+def command_pull(what):
+    '''Pull firmware to cache'''
+    if what.startswith('http'):
+        download_url(what, True)
+    else:
 
-    elif args.command == 'devices':
-        command_devices(verbose=args.verbose, include_links=args.include_links)
+        fwlist = FirmwareList(user_cache_dir)
 
-    elif args.command == 'pull':
-        if args.what == 'last':
+        if what in ('last', 'latest'):
             for name in fwlist.get_firmware_list():
                 firmware = fwlist.get_firmware(name)
-                print('pull', name)
+                click.echo('pull ' + name)
                 download_url(firmware['url'], True)
-                print()
-
-        elif args.what.startswith('http'):
-            download_url(args.what, True)
+                click.echo('')
         else:
-            firmware = fwlist.get_firmware(args.what)
+            firmware = fwlist.get_firmware(what)
             if not firmware:
                 print('Firmware not found, try updating first, command: bcf update')
                 sys.exit(1)
-            download_url(firmware['url'], True)
+            download_url(firmware['url'])
 
-    elif args.command == 'clean':
-        fwlist.clear()
-        for filename in os.listdir(user_cache_dir):
-            os.unlink(os.path.join(user_cache_dir, filename))
 
-    elif args.command == 'create':
-        name = args.name
+@cli.command('read')
+@click.argument('filename')
+@click.option('-d', '--device', type=str, help='Device path.')
+@click.option('--dfu', is_flag=True, help='Use dfu mode')
+@click.option('--length', help='length', default=196608, type=int)
+@click.pass_context
+def command_read(ctx, filename, length, device=None, dfu=False):
+    '''Download firmware to file'''
+    if device is None:
+        device = ctx.obj['device']
 
-        if os.path.exists(name):
-            print('Directory already exists')
-            sys.exit(1)
+    device = select_device('dfu' if dfu else device)
 
-        skeleton_zip_filename = download_url(SKELETON_URL_ZIP)
-        print()
+    flasher.uart.clone(device, filename, length, reporthook=print_progress_bar, label='Read')
 
-        tmp_dir = tempfile.mkdtemp()
 
-        zip_ref = zipfile.ZipFile(skeleton_zip_filename, 'r')
-        zip_ref.extractall(tmp_dir)
-        zip_ref.close()
+@cli.command('reset')
+@click.option('-d', '--device', type=str, help='Device path.')
+@click.option('--log', is_flag=True, help='Show all releases')
+@bcflog.click_options
+@click.pass_context
+def command_reset(ctx, device=None, log=False, **args):
+    '''Reset core module.'''
+    if device is None:
+        device = ctx.obj['device']
 
-        skeleton_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
-        shutil.move(skeleton_path, name)
+    if device == 'dfu':
+        raise Exception("Sorry, Core Module r1.3 doesn't support log functionality.")
 
-        os.rmdir(os.path.join(name, 'sdk'))
-        os.rmdir(os.path.join(name, '.vscode'))
-        os.unlink(os.path.join(name, '.gitmodules'))
+    device = select_device(device)
 
-        os.chdir(name)
+    if log:
+        bcflog.run_args(device, args, reset=True)
+    else:
+        flasher.reset(device)
 
-        if args.no_git:
-            sdk_zip_filename = download_url(SDK_URL_ZIP)
-            zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
-            zip_ref.extractall(tmp_dir)
-            zip_ref.close()
-            sdk_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
-            shutil.move(sdk_path, 'sdk')
 
-            sdk_zip_filename = download_url(VSCODE_URL_ZIP)
-            zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
-            zip_ref.extractall(tmp_dir)
-            zip_ref.close()
-            sdk_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
-            shutil.move(sdk_path, '.vscode')
+@cli.command('search')
+@click.argument('search')
+@click.option('--all', is_flag=True, help='Show all releases')
+@click.option('--description', is_flag=True, help='Show description')
+@click.option('--show-pre-release', is_flag=True, help='Show pre-release version')
+def command_list(search, all=False, description=False, show_pre_release=False):
+    '''Search in firmware names and descriptions.'''
+    fwlist = FirmwareList(user_cache_dir)
+    rows = fwlist.get_firmware_table(search, all=all, description=description, show_pre_release=show_pre_release)
+    if rows:
+        print_table([], rows)
+    else:
+        click.echo('Nothing found')
 
-        else:
-            os.system('git init')
-            os.system('git submodule add --depth 1 "' + SDK_GIT + '" sdk')
-            os.system('git submodule add --depth 1 "' + VSCODE_GIT + '" .vscode')
 
-        os.rmdir(tmp_dir)
+@cli.command('update')
+def command_update():
+    '''Update list of available firmware.'''
+    fwlist = FirmwareList(user_cache_dir)
+    fwlist.update()
+    click.echo('OK')
 
-    elif args.command == 'read':
-        flasher.uart.clone(args.device, args.filename, args.length, reporthook=print_progress_bar)
 
-    elif args.command == 'log':
-        log.run_args(args)
-
-    elif args.command == 'reset':
-        test_log_argumensts(args, subparsers['reset'])
-        command_reset(args)
-
-    elif args.command == 'eeprom':
-        command_eeprom(args)
+def main():
+    '''Application entry point.'''
+    try:
+        cli(obj={}),
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        click.echo(str(e), err=True)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
+    main()
