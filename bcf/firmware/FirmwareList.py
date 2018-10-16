@@ -18,6 +18,8 @@ class FirmwareList:
         bigclown_json = os.path.join(self._cache_dir, 'bigclown.json')
         if os.path.exists(bigclown_json):
             self._extend(json.load(open(bigclown_json)))
+        else:
+            self.update()
 
     def get_firmware(self, name):
         try:
