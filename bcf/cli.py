@@ -68,7 +68,7 @@ def command_create(name, no_git=False):
 
     os.chdir(name)
 
-    if args.no_git:
+    if no_git:
         sdk_zip_filename = download_url(SDK_URL_ZIP, use_cache=False)
         zip_ref = zipfile.ZipFile(sdk_zip_filename, 'r')
         zip_ref.extractall(tmp_dir)
