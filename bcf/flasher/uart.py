@@ -224,6 +224,11 @@ class Flash_Serial(object):
         self.ser.flush()
         return self._wait_for_ack() and self._wait_for_ack()
 
+    def readout_unprotect(self):
+        self.ser.write([0x92, 0x6D])
+        self.ser.flush()
+        return self._wait_for_ack() and self._wait_for_ack()
+
     def _calculate_xor(self, data):
         xor = 0
         if isinstance(data, str):
