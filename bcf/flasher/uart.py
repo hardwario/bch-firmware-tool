@@ -30,6 +30,7 @@ NACK = b'\x1F'
 class Flash_Serial(object):
     def __init__(self, device):
         self.ser = None
+        self._connect = False
         if bridge and 'hidraw' in device:
             self.ser = bridge.SerialPort(device)
         else:
@@ -217,6 +218,11 @@ class Flash_Serial(object):
         self.ser.flush()
 
         return self._wait_for_ack()
+
+    def write_unprotect(self):
+        self.ser.write([0x73, 0x8C])
+        self.ser.flush()
+        return self._wait_for_ack() and self._wait_for_ack()
 
     def _calculate_xor(self, data):
         xor = 0
