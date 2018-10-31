@@ -38,8 +38,6 @@ class SerialPort:
 
         self._device = device
 
-        self._connect = False
-
         self._lock()
         self._speed_up()
 
@@ -51,8 +49,22 @@ class SerialPort:
         self.flush = self.ser.flush
         self.readline = self.ser.readline
 
-    def __del__(self):
+    def close(self):
+        if not self.ser:
+            return
         self._unlock()
+        try:
+            self.ser.close()
+        except Exception as e:
+            pass
+        self.ser = None
+
+    def reopen(self):
+        self.ser.close()
+        self.ser.open()
+
+    def __del__(self):
+        self.close()
 
     def _lock(self):
         if not fcntl or not self.ser:
