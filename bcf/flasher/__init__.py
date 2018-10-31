@@ -4,11 +4,15 @@ from . import uart
 from . import dfu
 
 
-def flash(filename_bin, device=None, reporthook=None, run=True, erase_eeprom=False):
+def flash(filename, device=None, reporthook=None, run=True, erase_eeprom=False, unprotect=False):
     if device == 'dfu':
-        dfu.flash(filename_bin, reporthook=reporthook, erase_eeprom=erase_eeprom)
+        if filename_bin.endswith(".hex"):
+            raise Exception("DFU not support hex.")
+        if unprotect:
+            raise Exception("DFU not support Unprotect.")
+        dfu.flash(filename, reporthook=reporthook, erase_eeprom=erase_eeprom)
     else:
-        uart.flash(device, filename_bin, run=run, reporthook=reporthook, erase_eeprom=erase_eeprom)
+        uart.flash(device, filename, run=run, reporthook=reporthook, erase_eeprom=erase_eeprom, unprotect=unprotect)
 
 
 def reset(device):

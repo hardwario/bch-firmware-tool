@@ -118,14 +118,15 @@ def command_eeprom(ctx, device, erase=False, dfu=False):
 
 
 @cli.command('flash')
-@click.argument('what', metavar="<firmware from list|file|url>")
+@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin")
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--log', is_flag=True, help='Show all releases')
 @click.option('--dfu', is_flag=True, help='Use dfu mode')
 @click.option('--erase-eeprom', is_flag=True, help='Erase eeprom')
+@click.option('--unprotect', is_flag=True, help='Unprotect')
 @bcflog.click_options
 @click.pass_context
-def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=True, **args):
+def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=False, unprotect=False, **args):
     '''Flash firmware.'''
     if device is None:
         device = ctx.obj['device']
@@ -134,10 +135,10 @@ def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=Tru
         raise Exception("Sorry, Core Module r1.3 doesn't support log functionality.")
 
     if what.startswith('http'):
-        filename_bin = download_url(what)
+        filename = download_url(what)
 
     elif os.path.exists(what) and os.path.isfile(what):
-        filename_bin = what
+        filename = what
 
     else:
         fwlist = FirmwareList(user_cache_dir)
@@ -145,12 +146,12 @@ def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=Tru
         if not firmware:
             print('Firmware not found, try updating first, command: bcf update')
             sys.exit(1)
-        filename_bin = download_url(firmware['url'])
+        filename = download_url(firmware['url'])
 
     try:
         device = select_device('dfu' if dfu else device)
 
-        flasher.flash(filename_bin, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom)
+        flasher.flash(filename, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect)
         if log:
             bcflog.run_args(device, args, reset=True)
     except KeyboardInterrupt as e:
