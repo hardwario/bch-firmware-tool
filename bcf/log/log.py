@@ -15,7 +15,7 @@ log_level_color_lut = {'X': Fore.BLUE, 'D': Fore.MAGENTA, 'I': Fore.GREEN, 'W': 
 
 
 def test(ctx, param, value):
-    if value and '--log' not in sys.argv:
+    if value and '--log' not in sys.argv and 'log' not in sys.argv:
         ctx.fail('-log is required when use --time or --no-color or --raw or --record.')
     return value
 
