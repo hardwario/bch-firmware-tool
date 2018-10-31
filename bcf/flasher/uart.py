@@ -9,6 +9,7 @@ import serial.tools.list_ports
 from time import sleep, time
 import math
 import array
+import intelhex
 from ctypes import *
 from .serialport import ftdi
 try:
@@ -382,24 +383,153 @@ def clone(device, filename, length, reporthook=None, api=None, start_address=0x0
     f.close()
 
 
-def flash(device, filename_bin, run=True, reporthook=None, erase_eeprom=False):
+def _unprotect(device, api=None):
+    if api is None:
+        api = Flash_Serial(device)
+        _run_connect(api)
 
-    firmware = open(filename_bin, 'rb').read()
+    if not api.readout_unprotect():
+        raise Exception('Did not succeed Readout unprotect.')
+    print('Unprotect Read  OK')
+    api.ser.reopen()
+    api.reconnect()
 
-    api = Flash_Serial(device)
+    if not api.write_unprotect():
+        raise Exception('Did not succeed Write unprotect.')
+    print('Unprotect Write OK')
+    api.ser.reopen()
+    api.reconnect()
 
-    _run_connect(api)
 
-    length = len(firmware)
+def _flash_bin(device, filename, reporthook, api):
+    firmware = open(filename, 'rb').read()
 
-    if erase_eeprom:
-        eeprom_erase(device, reporthook=reporthook, run=False, api=api)
-
-    erase(device, length=length, reporthook=reporthook, api=api)
+    erase(device, length=len(firmware), reporthook=reporthook, api=api)
 
     write(device, firmware, reporthook=reporthook, api=api)
 
     verify(device, firmware, reporthook=reporthook, api=api)
+
+
+def _flash_hex(device, filename, reporthook, api):
+    ih = intelhex.IntelHex(filename)
+
+    flash_address_start = 0x08000000
+    flash_address_end = 0x0802FFFF
+    eeprom_address_start = 0x08080000
+    eeprom_address_end = 0x080817FF
+
+    length = 0
+    pages = 0
+
+    segments = ih.segments()
+    for s in segments:
+        slength = s[1] - s[0]
+        if flash_address_start <= s[0] <= flash_address_end:
+            length += slength
+            pages += int(math.ceil(slength / 128)) + 1
+        elif eeprom_address_start <= s[0] <= eeprom_address_end:
+            length += slength
+        else:
+            raise Exception("Unknown memory address %d", s[0])
+
+        # print("{:s}{:s}{{ first: 0x{:08X}, last: 0x{:08X}, length: {:d} }}".format('  ', '- ', s[0], s[1]-1, s[1]-s[0]))
+
+    print('length', length)
+    print('pages', pages)
+
+    if pages > 0:
+        if reporthook:
+            reporthook('Erase ', 0, pages)
+
+        done = 0
+
+        for s in segments:
+            if flash_address_start <= s[0] <= flash_address_end:
+                page_start = int(math.floor((s[0] - flash_address_start) / 128))
+                s_pages = int(math.ceil((s[1] - s[0]) / 128)) + 1
+
+                for page_start in range(0, s_pages, 80):
+                    page_stop = page_start + 80
+                    if page_stop > s_pages:
+                        page_stop = s_pages
+
+                    if not api.extended_erase_memory(range(page_start, page_stop)):
+                        raise Exception('Errase error')
+
+                    if reporthook:
+                        reporthook('Erase ', done + page_stop, pages)
+
+                done += s_pages
+
+    if reporthook:
+        reporthook('Write ', 0, length)
+
+    done = 0
+
+    for s in segments:
+        sih = ih[s[0]:s[1]]
+        for address_start in range(s[0], s[1], 128):
+            address_stop = address_start + 128
+            if address_stop > s[1]:
+                address_stop = s[1]
+
+            data = sih[address_start:address_stop].tobinstr()
+
+            for i in range(4):
+                if api.write_memory(address_start, data):
+                    if reporthook:
+                        done += address_stop - address_start
+                        reporthook('Write ', done, length)
+                    break
+                if i == 2:
+                    _run_connect(api)
+            else:
+                raise Exception('Write error')
+
+    if reporthook:
+        reporthook('Verify', 0, length)
+
+    done = 0
+
+    for s in segments:
+        sih = ih[s[0]:s[1]]
+        for address_start in range(s[0], s[1], 128):
+            address_stop = address_start + 128
+            if address_stop > s[1]:
+                address_stop = s[1]
+
+            data = sih[address_start:address_stop].tobinstr()
+
+            for i in range(4):
+                vdata = api.read_memory(address_start, len(data))
+
+                if vdata == data:
+                    if reporthook:
+                        done += address_stop - address_start
+                        reporthook('Verify', done, length)
+                    break
+                if i == 2:
+                    _run_connect(api)
+            else:
+                raise Exception('not match')
+
+
+def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False):
+    api = Flash_Serial(device)
+
+    _run_connect(api)
+
+    if unprotect:
+        _unprotect(device, api)
+
+    if erase_eeprom:
+        eeprom_erase(device, reporthook=reporthook, run=False, api=api)
+
+    if filename.endswith(".hex"):
+        _flash_hex(device, filename, reporthook, api)
+    else:
+        _flash_bin(device, filename, reporthook, api)
 
     if run:
         api.go(0x08000000)
