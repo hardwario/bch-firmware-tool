@@ -131,7 +131,7 @@ def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=Fal
     if device is None:
         device = ctx.obj['device']
 
-    if log and dfu or device == 'dfu':
+    if log and (dfu or device) == 'dfu':
         raise Exception("Sorry, Core Module r1.3 doesn't support log functionality.")
 
     if what.startswith('http'):

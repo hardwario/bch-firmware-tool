@@ -6,7 +6,7 @@ from . import dfu
 
 def flash(filename, device=None, reporthook=None, run=True, erase_eeprom=False, unprotect=False):
     if device == 'dfu':
-        if filename_bin.endswith(".hex"):
+        if filename.endswith(".hex"):
             raise Exception("DFU not support hex.")
         if unprotect:
             raise Exception("DFU not support Unprotect.")

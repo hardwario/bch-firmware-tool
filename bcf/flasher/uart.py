@@ -433,11 +433,6 @@ def _flash_hex(device, filename, reporthook, api):
         else:
             raise Exception("Unknown memory address %d", s[0])
 
-        # print("{:s}{:s}{{ first: 0x{:08X}, last: 0x{:08X}, length: {:d} }}".format('  ', '- ', s[0], s[1]-1, s[1]-s[0]))
-
-    print('length', length)
-    print('pages', pages)
-
     if pages > 0:
         if reporthook:
             reporthook('Erase ', 0, pages)
