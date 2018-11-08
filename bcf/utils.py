@@ -82,7 +82,7 @@ def download_url(url, use_cache=True):
                     f.write(data)
                     download_url_reporthook(1, dl, total_length)
     except Exception as e:
-        click.echo("Firmware download problem: " + e.args[0])
+        click.echo("Firmware download problem: " + str(e.args[0]))
         sys.exit(1)
     return filename_bin
 

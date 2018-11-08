@@ -30,6 +30,8 @@ VSCODE_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-vscode/zip/master
 def cli(ctx, device=None):
     '''BigClown Firmware Tool.'''
     ctx.obj['device'] = device
+    if not os.path.exists(user_cache_dir):
+        os.makedirs(user_cache_dir)
 
 
 @cli.command('clean')
