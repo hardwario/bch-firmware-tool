@@ -275,7 +275,7 @@ def _run_connect(api):
 
         except Exception as e:
             if i > 2:
-                raise e
+                raise Exception('Cannot switch Core Module to bootloader, please check that the port is correct and it is not blocked by other application.')
             i += 1
 
 
