@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__all__ = ["ErrorOpenDevice", "ErrorLockDevice"]
+__all__ = ["ErrorOpenDevice", "ErrorLockDevice", "ErrorOpenDevicePermissionDenied"]
 
 
 class ErrorOpenDevice(Exception):
+    pass
+
+
+class ErrorOpenDevicePermissionDenied(Exception):
     pass
 
 

@@ -10,6 +10,7 @@ import zipfile
 import shutil
 import subprocess
 import serial
+import platform
 from bcf.firmware.FirmwareList import FirmwareList
 from bcf import flasher
 from bcf.log import log as bcflog
@@ -156,31 +157,34 @@ def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=Fal
         flasher.flash(filename, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect)
         if log:
             bcflog.run_args(device, args, reset=True)
-    except KeyboardInterrupt as e:
-        print("")
-        sys.exit(1)
-    except Exception as e:
-        print(e)
-        if isinstance(e, flasher.serialport.error.ErrorLockDevice):
-            print("TIP: Maybe the bcg service is running - you need to stop it first.")
-            if os.path.exists("/etc/init.d/bcg-ud"):
-                print("Try this command:")
-                print("/etc/init.d/bcg-ud stop")
-            else:
-                try:
-                    process = subprocess.Popen(['pm2', '-m', 'list'], stdout=subprocess.PIPE)
-                    out, err = process.communicate()
-                    for line in out.splitlines():
-                        if line.startswith(b"+---"):
-                            name = line[5:].decode()
-                            if 'bcg' in name and name != 'bcg-cm':
-                                print("Try this command:")
-                                print("pm2 stop %s" % name)
-                except Exception as e:
-                    pass
-        if os.getenv('DEBUG', False):
-            raise e
-        sys.exit(1)
+
+    except flasher.serialport.error.ErrorLockDevice as e:
+        click.echo(e)
+        click.echo("TIP: Maybe the bcg service is running - you need to stop it first.")
+        if os.path.exists("/etc/init.d/bcg-ud"):
+            click.echo("Try this command:")
+            click.echo("/etc/init.d/bcg-ud stop")
+        else:
+            try:
+                process = subprocess.Popen(['pm2', '-m', 'list'], stdout=subprocess.PIPE)
+                out, err = process.communicate()
+                for line in out.splitlines():
+                    if line.startswith(b"+---"):
+                        name = line[5:].decode()
+                        if 'bcg' in name and name != 'bcg-cm':
+                            click.echo("Try this command:")
+                            click.echo("pm2 stop %s" % name)
+            except Exception as e:
+                pass
+
+    except flasher.serialport.error.ErrorOpenDevicePermissionDenied as e:
+        click.echo(e)
+        if platform.system() == 'Linux':
+            groups = subprocess.check_output('groups').decode().strip().split()
+            if 'dialout' not in groups:
+                click.echo("TIP: Try add permissions on serial port")
+                click.echo("Try this command and logout and login back:")
+                click.echo("sudo usermod -a -G dialout $USER")
 
 
 @cli.command('help')
@@ -317,6 +321,8 @@ def main():
         pass
     except Exception as e:
         click.echo(str(e), err=True)
+        if os.getenv('DEBUG', False):
+            raise e
         sys.exit(1)
 
 

@@ -34,6 +34,8 @@ class SerialPort:
         except serial.serialutil.SerialException as e:
             if e.errno == 2:
                 raise ErrorOpenDevice('Could not open device %s' % device)
+            if e.errno == 13:
+                raise ErrorOpenDevicePermissionDenied('Could not open device %s Permission denied' % device)
             raise e
 
         self._device = device
