@@ -401,17 +401,76 @@ def _unprotect(device, api=None):
     api.reconnect()
 
 
-def _flash_bin(device, filename, reporthook, api):
+def _flash_bin_diff(device, filename, reporthook, api, start_address=0x08000000):
+    firmware = open(filename, 'rb').read()
+
+    length = len(firmware)
+
+    page_size = 128
+
+    pages = int(math.ceil(length / page_size))
+    if pages > 1536:
+        pages = 1536
+
+    offset = 0
+
+    diff_pages = []
+
+    for page in range(0, pages):
+        read_len = length - offset
+        if read_len > page_size:
+            read_len = page_size
+
+        data = api.read_memory(start_address + offset, read_len)
+
+        if data != firmware[offset:offset + read_len]:
+            diff_pages.append(page)
+
+        if reporthook:
+            reporthook('Compare', page + 1, pages)
+
+        offset += page_size
+
+    if diff_pages:
+        print('Diff pages', len(diff_pages), 'of', pages)
+        for i in range(0, len(diff_pages), 80):
+
+            if not api.extended_erase_memory(diff_pages[i:i + 80]):
+                raise Exception('Errase error')
+
+            if reporthook:
+                reporthook('Erase diff pages', i + 80, len(diff_pages))
+
+        for i, page in enumerate(diff_pages):
+            offset = page * page_size
+            data = firmware[offset:offset + page_size]
+            if data:
+                for j in range(3):
+                    if api.write_memory(start_address + offset, data):
+                        break
+                    if j == 1:
+                        _run_connect(api)
+                else:
+                    raise Exception('Write error')
+
+            if reporthook:
+                reporthook('Write diff pages', i + 1, len(diff_pages))
+
+
+def _flash_bin(device, filename, reporthook, api, skip_verify):
     firmware = open(filename, 'rb').read()
 
     erase(device, length=len(firmware), reporthook=reporthook, api=api)
 
     write(device, firmware, reporthook=reporthook, api=api)
 
+    if skip_verify:
+        return
+
     verify(device, firmware, reporthook=reporthook, api=api)
 
 
-def _flash_hex(device, filename, reporthook, api):
+def _flash_hex(device, filename, reporthook, api, skip_verify):
     ih = intelhex.IntelHex(filename)
 
     flash_address_start = 0x08000000
@@ -482,6 +541,9 @@ def _flash_hex(device, filename, reporthook, api):
             else:
                 raise Exception('Write error')
 
+    if skip_verify:
+        return
+
     if reporthook:
         reporthook('Verify', 0, length)
 
@@ -510,7 +572,7 @@ def _flash_hex(device, filename, reporthook, api):
                 raise Exception('not match')
 
 
-def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False):
+def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False):
     api = Flash_Serial(device)
 
     _run_connect(api)
@@ -522,9 +584,11 @@ def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unpro
         eeprom_erase(device, reporthook=reporthook, run=False, api=api)
 
     if filename.endswith(".hex"):
-        _flash_hex(device, filename, reporthook, api)
+        _flash_hex(device, filename, reporthook, api, skip_verify)
+    if diff:
+        _flash_bin_diff(device, filename, reporthook, api)
     else:
-        _flash_bin(device, filename, reporthook, api)
+        _flash_bin(device, filename, reporthook, api, skip_verify)
 
     if run:
         api.go(0x08000000)

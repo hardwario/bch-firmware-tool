@@ -128,9 +128,11 @@ def command_eeprom(ctx, device, erase=False, dfu=False):
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
 @click.option('--erase-eeprom', is_flag=True, help='Erase eeprom.')
 @click.option('--unprotect', is_flag=True, help='Unprotect.')
+@click.option('--skip-verify', is_flag=True, help='Skip verify.')
+@click.option('--diff', is_flag=True, help='Flash only different pages.')
 @bcflog.click_options
 @click.pass_context
-def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=False, unprotect=False, **args):
+def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_verify, diff, **args):
     '''Flash firmware.'''
     if device is None:
         device = ctx.obj['device']
@@ -155,7 +157,7 @@ def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=Fal
     try:
         device = select_device('dfu' if dfu else device)
 
-        flasher.flash(filename, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect)
+        flasher.flash(filename, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect, skip_verify=skip_verify, diff=diff)
         if log:
             bcflog.run_args(device, args, reset=True)
 
