@@ -37,7 +37,7 @@ def cli(ctx, device=None):
 
 @cli.command('clean')
 def command_clean():
-    '''Clean cache'''
+    '''Clean cache.'''
     fwlist = FirmwareList(user_cache_dir)
     fwlist.clear()
     for filename in os.listdir(user_cache_dir):
@@ -48,7 +48,7 @@ def command_clean():
 @click.argument('name')
 @click.option('--no-git', is_flag=True, help='Disable git.')
 def command_create(name, no_git=False):
-    '''Create new firmware'''
+    '''Create new firmware.'''
     if os.path.exists(name):
         print('Directory already exists')
         sys.exit(1)
@@ -112,6 +112,7 @@ def command_devices(verbose=False, include_links=False):
 @click.option('--dfu', is_flag=True, help='Use dfu mode')
 @click.pass_context
 def command_eeprom(ctx, device, erase=False, dfu=False):
+    '''Work with EEPROM.'''
     if device is None:
         device = ctx.obj['device']
 
@@ -232,7 +233,7 @@ def command_log(ctx, device=None, log=False, **args):
 @cli.command('pull')
 @click.argument('what', metavar="<firmware from list|url>")
 def command_pull(what):
-    '''Pull firmware to cache'''
+    '''Pull firmware to cache.'''
     if what.startswith('http'):
         download_url(what, True)
     else:
@@ -260,7 +261,7 @@ def command_pull(what):
 @click.option('--length', help='length', default=196608, type=int)
 @click.pass_context
 def command_read(ctx, filename, length, device=None, dfu=False):
-    '''Download firmware to file'''
+    '''Download firmware to file.'''
     if device is None:
         device = ctx.obj['device']
 
