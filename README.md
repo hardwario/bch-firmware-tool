@@ -9,6 +9,32 @@
 
 This repository contains BigClown Firmware Tool.
 
+```
+Usage: bcf [OPTIONS] COMMAND [ARGS]...
+
+  BigClown Firmware Tool.
+
+Options:
+  -d, --device TEXT  Device path.
+  --version          Show the version and exit.
+  --help             Show this message and exit.
+
+Commands:
+  clean    Clean cache.
+  create   Create new firmware.
+  devices  Print available devices.
+  eeprom   Work with EEPROM.
+  flash    Flash firmware.
+  help     Show help.
+  list     List firmware.
+  log      Show log.
+  pull     Pull firmware to cache.
+  read     Download firmware to file.
+  reset    Reset core module.
+  search   Search in firmware names and descriptions.
+  update   Update list of available firmware.
+```
+
 
 ## License
 
