@@ -111,6 +111,8 @@ def print_table(labels, rows):
 
 
 def print_progress_bar(title, progress, total, length=20):
+    if progress > total:
+        progress = total
     filled_length = int(length * progress // total)
     if filled_length < 0:
         filled_length = 0
