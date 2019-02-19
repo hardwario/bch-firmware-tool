@@ -23,7 +23,7 @@ def test(ctx, param, value):
 def click_options(f):
     f = click.option('--time', is_flag=True, help='Show time.', callback=test)(f)
     f = click.option('--no-color', is_flag=True, help='Disable color.', callback=test)(f)
-    f = click.option('--raw', is_flag=True, help='Print raw .', callback=test)(f)
+    f = click.option('--raw', is_flag=True, help='Print raw.', callback=test)(f)
     return click.option('--record', help='Record to file.', callback=test)(f)
 
 

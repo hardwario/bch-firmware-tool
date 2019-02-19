@@ -95,8 +95,8 @@ def command_create(name, no_git=False):
 
 
 @cli.command('devices')
-@click.option('-v', '--verbose', is_flag=True, help='Show more messages')
-@click.option('-s', '--include-links', is_flag=True, help='Include entries that are symlinks to real devices')
+@click.option('-v', '--verbose', is_flag=True, help='Show more messages.')
+@click.option('-s', '--include-links', is_flag=True, help='Include entries that are symlinks to real devices.')
 def command_devices(verbose=False, include_links=False):
     '''Print available devices.'''
     for port, desc, hwid in get_devices(include_links):
@@ -109,7 +109,7 @@ def command_devices(verbose=False, include_links=False):
 @cli.command('eeprom')
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--erase', is_flag=True, help='Erase eeprom memory.')
-@click.option('--dfu', is_flag=True, help='Use dfu mode')
+@click.option('--dfu', is_flag=True, help='Use dfu mode.')
 @click.pass_context
 def command_eeprom(ctx, device, erase=False, dfu=False):
     '''Work with EEPROM.'''
@@ -124,10 +124,10 @@ def command_eeprom(ctx, device, erase=False, dfu=False):
 @cli.command('flash')
 @click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin")
 @click.option('-d', '--device', type=str, help='Device path.')
-@click.option('--log', is_flag=True, help='Show all releases')
-@click.option('--dfu', is_flag=True, help='Use dfu mode')
-@click.option('--erase-eeprom', is_flag=True, help='Erase eeprom')
-@click.option('--unprotect', is_flag=True, help='Unprotect')
+@click.option('--log', is_flag=True, help='Show all releases.')
+@click.option('--dfu', is_flag=True, help='Use dfu mode.')
+@click.option('--erase-eeprom', is_flag=True, help='Erase eeprom.')
+@click.option('--unprotect', is_flag=True, help='Unprotect.')
 @bcflog.click_options
 @click.pass_context
 def command_flash(ctx, what, device=None, log=False, dfu=False, erase_eeprom=False, unprotect=False, **args):
@@ -202,9 +202,9 @@ def command_help(ctx, command):
 
 
 @cli.command('list')
-@click.option('--all', is_flag=True, help='Show all releases')
-@click.option('--description', is_flag=True, help='Show description')
-@click.option('--show-pre-release', is_flag=True, help='Show pre-release version')
+@click.option('--all', is_flag=True, help='Show all releases.')
+@click.option('--description', is_flag=True, help='Show description.')
+@click.option('--show-pre-release', is_flag=True, help='Show pre-release version.')
 def command_list(all=False, description=False, show_pre_release=False):
     '''List firmware.'''
     fwlist = FirmwareList(user_cache_dir)
@@ -257,8 +257,8 @@ def command_pull(what):
 @cli.command('read')
 @click.argument('filename')
 @click.option('-d', '--device', type=str, help='Device path.')
-@click.option('--dfu', is_flag=True, help='Use dfu mode')
-@click.option('--length', help='length', default=196608, type=int)
+@click.option('--dfu', is_flag=True, help='Use dfu mode.')
+@click.option('--length', help='length.', default=196608, type=int)
 @click.pass_context
 def command_read(ctx, filename, length, device=None, dfu=False):
     '''Download firmware to file.'''
@@ -272,7 +272,7 @@ def command_read(ctx, filename, length, device=None, dfu=False):
 
 @cli.command('reset')
 @click.option('-d', '--device', type=str, help='Device path.')
-@click.option('--log', is_flag=True, help='Show all releases')
+@click.option('--log', is_flag=True, help='Show all releases.')
 @bcflog.click_options
 @click.pass_context
 def command_reset(ctx, device=None, log=False, **args):
@@ -293,9 +293,9 @@ def command_reset(ctx, device=None, log=False, **args):
 
 @cli.command('search')
 @click.argument('search')
-@click.option('--all', is_flag=True, help='Show all releases')
-@click.option('--description', is_flag=True, help='Show description')
-@click.option('--show-pre-release', is_flag=True, help='Show pre-release version')
+@click.option('--all', is_flag=True, help='Show all releases.')
+@click.option('--description', is_flag=True, help='Show description.')
+@click.option('--show-pre-release', is_flag=True, help='Show pre-release version.')
 def command_list(search, all=False, description=False, show_pre_release=False):
     '''Search in firmware names and descriptions.'''
     fwlist = FirmwareList(user_cache_dir)
