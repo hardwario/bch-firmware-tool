@@ -34,6 +34,7 @@ class GithubApi:
         return self._cache_dir
 
     def api_get(self, url):
+        logger.debug("api_get %s", url)
 
         if self._cache_dir:
             filename = hashlib.sha256(url.encode()).hexdigest()
@@ -82,7 +83,7 @@ class GithubApi:
 
         for repo in self.iter_repos(owner):
             if repo['name'].startswith("bcf-") and repo['name'] not in {"bcf-sdk", "bcf-vscode", "bcf-skeleton"}:
-                logging.debug('repo %s/%s', owner, repo['name'])
+                logger.debug('repo %s/%s', owner, repo['name'])
 
                 firmware_list += self._make_firmware_list(owner, repo['name'], repo_obj=repo)
 
@@ -98,8 +99,9 @@ class GithubApi:
         return self._make_firmware_list(owner, repo)
 
     def _make_firmware_list(self, owner, repo, repo_obj=None):
-
         owner_repo = owner + '/' + repo
+
+        logger.info(owner_repo)
 
         firmware_dict = {}
 
@@ -114,24 +116,35 @@ class GithubApi:
                 response = self._session.get(content['download_url'])
                 meta_yaml = yaml.safe_load(response.content)
                 firmware.update(meta_yaml)
+                break
+        else:
+            logger.warning("No meta.yml file found.")
 
         for release in self.api_get("https://api.github.com/repos/" + owner_repo + "/releases"):
             for assets in release.get('assets', []):
-                if assets["name"].endswith(".bin") and assets["name"].startswith(repo):
+                if assets["name"].endswith(".bin"):
+                    if not assets["name"].startswith(repo):
+                        logger.warning('file "%s" does not start the same as the repository name', assets["name"])
+                        continue
+
                     name = assets["name"][:-4]
-                    if name.endswith(release["tag_name"]):
-                        name = owner + "/" + name[:-len(release["tag_name"]) - 1]
 
-                        if name not in firmware_dict:
-                            firmware_dict[name] = copy.deepcopy(firmware)
-                            firmware_dict[name]['name'] = name
+                    if not name.endswith(release["tag_name"]):
+                        logger.warning('file %s does not end with the version name %s', assets["name"], release["tag_name"])
+                        continue
 
-                        firmware_dict[name]['versions'].append({
-                            "name": release["tag_name"],
-                            "prerelease": release['prerelease'],
-                            "url": assets['browser_download_url'],
-                            "date": release['published_at']
-                        })
+                    name = owner + "/" + name[:-len(release["tag_name"]) - 1]
+
+                    if name not in firmware_dict:
+                        firmware_dict[name] = copy.deepcopy(firmware)
+                        firmware_dict[name]['name'] = name
+
+                    firmware_dict[name]['versions'].append({
+                        "name": release["tag_name"],
+                        "prerelease": release['prerelease'],
+                        "url": assets['browser_download_url'],
+                        "date": release['published_at']
+                    })
 
         return list(firmware_dict.values())
 
