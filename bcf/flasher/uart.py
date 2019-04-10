@@ -29,14 +29,13 @@ NACK = b'\x1F'
 
 
 class Flash_Serial(object):
-    def __init__(self, device):
+    def __init__(self, device, baudrate=921600):
         self.ser = None
         self._connect = False
         if bridge and 'hidraw' in device:
             self.ser = bridge.SerialPort(device)
         else:
-            # baudrate=1152000
-            self.ser = ftdi.SerialPort(device, baudrate=921600, parity=serial.PARITY_EVEN, timeout=0.1)
+            self.ser = ftdi.SerialPort(device, baudrate=baudrate, parity=serial.PARITY_EVEN, timeout=0.1)
 
     def connect(self):
         if not self._connect:
@@ -572,8 +571,8 @@ def _flash_hex(device, filename, reporthook, api, skip_verify):
                 raise Exception('not match')
 
 
-def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False):
-    api = Flash_Serial(device)
+def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False, baudrate=921600):
+    api = Flash_Serial(device, baudrate)
 
     _run_connect(api)
 
@@ -594,8 +593,8 @@ def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unpro
         api.go(0x08000000)
 
 
-def reset(device):
-    api = Flash_Serial(device)
+def reset(device, baudrate=921600):
+    api = Flash_Serial(device, baudrate)
     api.ser.reset_sequence()
 
 
@@ -609,9 +608,9 @@ def get_list_devices():
     return table
 
 
-def eeprom_clone(device, filename, length=6144, reporthook=None, api=None):
+def eeprom_clone(device, filename, length=6144, reporthook=None, api=None, baudrate=921600):
     if api is None:
-        api = Flash_Serial(device)
+        api = Flash_Serial(device, baudrate)
         _run_connect(api)
 
     start_address = 0x08080000
@@ -640,9 +639,9 @@ def eeprom_clone(device, filename, length=6144, reporthook=None, api=None):
     f.close()
 
 
-def eeprom_erase(device, reporthook=None, run=True, api=None):
+def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600):
     if api is None:
-        api = Flash_Serial(device)
+        api = Flash_Serial(device, baudrate)
         _run_connect(api)
 
     length = 6144
