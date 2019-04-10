@@ -130,9 +130,11 @@ def command_eeprom(ctx, device, erase=False, dfu=False):
 @click.option('--unprotect', is_flag=True, help='Unprotect.')
 @click.option('--skip-verify', is_flag=True, help='Skip verify.')
 @click.option('--diff', is_flag=True, help='Flash only different pages.')
+@click.option('--slow', is_flag=True, help='Slow flash, same as --baudrate 115200.')
+@click.option('--baudrate', type=int, help='Baudrate (default 921600).', default=921600)
 @bcflog.click_options
 @click.pass_context
-def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_verify, diff, **args):
+def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_verify, diff, slow, baudrate, **args):
     '''Flash firmware.'''
     if device is None:
         device = ctx.obj['device']
@@ -157,7 +159,10 @@ def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_ver
     try:
         device = select_device('dfu' if dfu else device)
 
-        flasher.flash(filename, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect, skip_verify=skip_verify, diff=diff)
+        if slow:
+            baudrate = 115200
+
+        flasher.flash(filename, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect, skip_verify=skip_verify, diff=diff, baudrate=baudrate)
         if log:
             bcflog.run_args(device, args, reset=True)
 
