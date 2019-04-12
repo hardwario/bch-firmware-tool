@@ -18,6 +18,11 @@ You can install **bcf** directly from PyPI:
 sudo pip3 install -U bcf
 ```
 
+For Bash Complete add this line to `.bashrc`
+```
+eval "$(_BCF_COMPLETE=source bcf)"
+```
+
 ## Usage
 
 ```
