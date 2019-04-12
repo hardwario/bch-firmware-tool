@@ -12,6 +12,7 @@ import logging
 import re
 import yaml
 import requests
+from .yml_schema import meta_yml_schema
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,13 @@ class GithubApi:
             if content["name"] == "meta.yml":
                 response = self._session.get(content['download_url'])
                 meta_yaml = yaml.safe_load(response.content)
-                firmware.update(meta_yaml)
+
+                try:
+                    meta_yml_schema.validate(meta_yaml)
+                    firmware.update(meta_yaml)
+                except Exception as e:
+                    logger.warning(str(e))
+
                 break
         else:
             logger.warning("No meta.yml file found.")
