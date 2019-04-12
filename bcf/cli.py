@@ -121,8 +121,12 @@ def command_eeprom(ctx, device, erase=False, dfu=False):
         flasher.eeprom_erase(device, reporthook=print_progress_bar)
 
 
+def get_firmware_list(ctx, args, incomplete):
+    return glob.glob('*.bin') + FirmwareList(user_cache_dir).get_firmware_list(startswith=incomplete)
+
+
 @cli.command('flash')
-@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin")
+@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", autocompletion=get_firmware_list)
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--log', is_flag=True, help='Show all releases.')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')

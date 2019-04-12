@@ -39,8 +39,15 @@ class FirmwareList:
                     if version == v['name']:
                         return v
 
-    def get_firmware_list(self):
-        return [firmware['name'] + ':latest' for firmware in self._list]
+    def get_firmware_list(self, startswith=None):
+        if startswith:
+            array = []
+            for firmware in self._list:
+                if firmware['name'].startswith(startswith):
+                    array.append(firmware['name'] + ':latest')
+            return array
+        else:
+            return [firmware['name'] + ':latest' for firmware in self._list]
 
     def get_firmware_table(self, search='', all=False, description=False, show_pre_release=False):
         table = []
