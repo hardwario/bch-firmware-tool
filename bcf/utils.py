@@ -8,6 +8,7 @@ import requests
 import platform
 import hashlib
 import appdirs
+import re
 from distutils.version import LooseVersion
 
 user_cache_dir = appdirs.user_cache_dir('bcf')
@@ -37,8 +38,12 @@ def select_device(device):
             raise Exception("No device")
 
         for i, port in enumerate(ports):
-            click.echo("%i %s" % (i, port[0]), err=True)
-        d = click.prompt('Please enter device')
+            sn = ""
+            g = re.search(r"SER=([^\s]*)", port[2])
+            if g:
+                sn = g.group(1)
+            click.echo("%i: %s %s" % (i, port[0], sn), err=True)
+        d = click.prompt('Please choose device (line number)')
         for port in ports:
             if port[0] == d:
                 device = port[0]
