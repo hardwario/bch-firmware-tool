@@ -122,7 +122,8 @@ def command_eeprom(ctx, device, erase=False, dfu=False):
 
 
 def get_firmware_list(ctx, args, incomplete):
-    return glob.glob('*.bin') + FirmwareList(user_cache_dir).get_firmware_list(startswith=incomplete)
+    files = list(filter(lambda name: name.startswith(incomplete), glob.glob('*.bin')))
+    return files + FirmwareList(user_cache_dir).get_firmware_list(startswith=incomplete)
 
 
 @cli.command('flash')

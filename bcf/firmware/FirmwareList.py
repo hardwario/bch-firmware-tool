@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sys
 import json
@@ -11,6 +12,7 @@ class FirmwareList:
     def __init__(self, cache_dir):
         self._list = []
         self._cache_dir = cache_dir
+        # print(cache_dir)
 
         if not os.path.exists(self._cache_dir):
             os.makedirs(self._cache_dir)
