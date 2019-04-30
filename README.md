@@ -22,6 +22,11 @@ For Bash Complete add this line to `.bashrc`
 ```
 eval "$(_BCF_COMPLETE=source bcf)"
 ```
+Then run this command to reload .bashrc
+```
+source ~/.bashrc
+```
+Now you can for example write `bcf --de`, press TAB and `--device` text is automatically completed.
 
 ## Usage
 
