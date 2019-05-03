@@ -46,7 +46,7 @@ zadig_ini = '''
 
 '''
 
-help_url = "https://www.bigclown.com/doc/tutorials/toolchain-guide/#windows-dfu-driver-troubleshooting"
+help_url = "https://developers.bigclown.com/firmware/toolchain-guide#windows-dfu-driver-troubleshooting"
 
 
 def call(cmd, title, reporthook):
