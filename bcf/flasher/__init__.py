@@ -24,3 +24,16 @@ def eeprom_erase(device, reporthook):
         dfu.eeprom_erase(reporthook=reporthook)
     else:
         uart.eeprom_erase(device, reporthook=reporthook, run=True)
+
+
+def eeprom_read(device, filename, address=0, length=6144, reporthook=None):
+    if 0 > address or address >= 6144:
+        raise Exception('Bad address')
+
+    if 0 >= length or length > 6144:
+        raise Exception('Bad length')
+
+    if device == 'dfu':
+        dfu.eeprom_read(filename, address, length, reporthook=reporthook)
+    else:
+        uart.eeprom_read(device, filename, address, length, reporthook=reporthook)

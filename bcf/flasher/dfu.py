@@ -139,7 +139,7 @@ def eeprom_erase(reporthook=None):
     cmd = ["-s", "0x08080000:leave", "-d", "0483:df11", "-a", "2", "-D", tmpfile]
 
     for i in range(3):
-        out = call(cmd, "Erase eeprom", reporthook)
+        out = call(cmd, "Erase EEPROM", reporthook)
 
         if "Error during download get_status" in out:
             time.sleep(1)
@@ -149,6 +149,26 @@ def eeprom_erase(reporthook=None):
     os.unlink(tmpfile)
 
     if "File downloaded successfully" not in out:
+        raise Exception("Error \nlog: \n\n" + out)
+
+
+def eeprom_read(filename, address=0, length=6144, reporthook=None):
+    start_address = 0x08080000 + address
+
+    if os.path.exists(filename):
+        os.unlink(filename)
+
+    cmd = ["-s", hex(start_address) + ":leave", "-Z", str(length), "-d", "0483:df11", "-a", "2", "-U", filename]
+
+    for i in range(3):
+        out = call(cmd, "Read EEPROM", reporthook)
+
+        if "Error during download get_status" in out:
+            time.sleep(1)
+        else:
+            break
+
+    if "Upload done." not in out:
         raise Exception("Error \nlog: \n\n" + out)
 
 

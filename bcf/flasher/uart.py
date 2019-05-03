@@ -608,12 +608,15 @@ def get_list_devices():
     return table
 
 
-def eeprom_clone(device, filename, length=6144, reporthook=None, api=None, baudrate=921600):
+def eeprom_read(device, filename, address=0, length=6144, reporthook=None, api=None, baudrate=921600, label='Read EEPROM'):
     if api is None:
         api = Flash_Serial(device, baudrate)
         _run_connect(api)
 
-    start_address = 0x08080000
+    start_address = 0x08080000 + address
+
+    if reporthook:
+        reporthook(label, 0, length)
 
     f = open(filename, 'wb')
     step = 128
@@ -634,12 +637,12 @@ def eeprom_clone(device, filename, length=6144, reporthook=None, api=None, baudr
             raise Exception('not match')
 
         if reporthook:
-            reporthook('eeprom clone', offset + read_len, length)
+            reporthook(label, offset + read_len, length)
 
     f.close()
 
 
-def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600):
+def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600, label='Erase EEPROM'):
     if api is None:
         api = Flash_Serial(device, baudrate)
         _run_connect(api)
@@ -649,7 +652,7 @@ def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600):
     start_address = 0x08080000
 
     if reporthook:
-        reporthook('Erase eeprom ', 0, length)
+        reporthook(label, 0, length)
 
     step = 128
     data = bytearray([0xff] * 128)
@@ -660,7 +663,7 @@ def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600):
         for i in range(4):
             if api.write_memory(start_address + offset, data):
                 if reporthook:
-                    reporthook('Erase eeprom ', offset + write_len, length)
+                    reporthook(label, offset + write_len, length)
                 break
             if i == 2:
                 _run_connect(api)
