@@ -108,15 +108,20 @@ def command_devices(verbose=False, include_links=False):
 
 @cli.command('eeprom')
 @click.option('-d', '--device', type=str, help='Device path.')
-@click.option('--erase', is_flag=True, help='Erase eeprom memory.')
+@click.option('--read', type=str, help='Read EEPROM and save to file.', metavar='FILE')
+@click.option('--erase', is_flag=True, help='Erase EEPROM.')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
 @click.pass_context
-def command_eeprom(ctx, device, erase=False, dfu=False):
+def command_eeprom(ctx, device, read, erase, dfu):
     '''Work with EEPROM.'''
     if device is None:
         device = ctx.obj['device']
 
     device = select_device('dfu' if dfu else device)
+
+    if read:
+        flasher.eeprom_read(device, read, address=0, length=6144, reporthook=print_progress_bar)
+
     if erase:
         flasher.eeprom_erase(device, reporthook=print_progress_bar)
 
