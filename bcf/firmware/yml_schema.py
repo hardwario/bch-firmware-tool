@@ -20,3 +20,12 @@ meta_yml_schema = Schema({
         }
     ],
 })
+
+source_yml_schema = Schema(
+    [
+        {
+            'type': And(str, lambda x: x in ('list', )),
+            'url': And(str, len)
+        }
+    ]
+)

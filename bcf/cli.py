@@ -11,7 +11,6 @@ import shutil
 import subprocess
 import serial
 import platform
-from bcf.firmware.FirmwareList import FirmwareList
 from bcf import flasher
 from bcf.log import log as bcflog
 from bcf.utils import *
@@ -38,7 +37,7 @@ def cli(ctx, device=None):
 @cli.command('clean')
 def command_clean():
     '''Clean cache.'''
-    fwlist = FirmwareList(user_cache_dir)
+    fwlist = get_fwlist()
     fwlist.clear()
     for filename in os.listdir(user_cache_dir):
         os.unlink(os.path.join(user_cache_dir, filename))
@@ -128,7 +127,7 @@ def command_eeprom(ctx, device, read, erase, dfu):
 
 def get_firmware_list(ctx, args, incomplete):
     files = list(filter(lambda name: name.startswith(incomplete), glob.glob('*.bin')))
-    return files + FirmwareList(user_cache_dir).get_firmware_list(startswith=incomplete)
+    return files + get_fwlist().get_firmware_list(startswith=incomplete)
 
 
 @cli.command('flash')
@@ -159,7 +158,7 @@ def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_ver
         filename = what
 
     else:
-        fwlist = FirmwareList(user_cache_dir)
+        fwlist = get_fwlist()
         firmware = fwlist.get_firmware(what)
         if not firmware:
             print('Firmware not found, try updating first, command: bcf update')
@@ -224,7 +223,7 @@ def command_help(ctx, command):
 @click.option('--show-pre-release', is_flag=True, help='Show pre-release version.')
 def command_list(all=False, description=False, show_pre_release=False):
     '''List firmware.'''
-    fwlist = FirmwareList(user_cache_dir)
+    fwlist = get_fwlist()
     rows = fwlist.get_firmware_table(all=all, description=description, show_pre_release=show_pre_release)
     if rows:
         print_table([], rows)
@@ -255,7 +254,7 @@ def command_pull(what):
         download_url(what, True)
     else:
 
-        fwlist = FirmwareList(user_cache_dir)
+        fwlist = get_fwlist()
 
         if what in ('last', 'latest'):
             for name in fwlist.get_firmware_list():
@@ -315,7 +314,7 @@ def command_reset(ctx, device=None, log=False, **args):
 @click.option('--show-pre-release', is_flag=True, help='Show pre-release version.')
 def command_list(search, all=False, description=False, show_pre_release=False):
     '''Search in firmware names and descriptions.'''
-    fwlist = FirmwareList(user_cache_dir)
+    fwlist = get_fwlist()
     rows = fwlist.get_firmware_table(search, all=all, description=description, show_pre_release=show_pre_release)
     if rows:
         print_table([], rows)
@@ -326,7 +325,7 @@ def command_list(search, all=False, description=False, show_pre_release=False):
 @cli.command('update')
 def command_update():
     '''Update list of available firmware.'''
-    fwlist = FirmwareList(user_cache_dir)
+    fwlist = get_fwlist()
     fwlist.update()
     click.echo('OK')
 

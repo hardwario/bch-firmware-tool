@@ -10,11 +10,16 @@ import hashlib
 import appdirs
 import re
 from distutils.version import LooseVersion
+from bcf.firmware.FirmwareList import FirmwareList
 
 user_cache_dir = appdirs.user_cache_dir('bcf')
 user_config_dir = appdirs.user_config_dir('bcf')
 
 pyserial_34 = LooseVersion(serial.VERSION) >= LooseVersion("3.4.0")
+
+
+def get_fwlist():
+    return FirmwareList(user_cache_dir, user_config_dir)
 
 
 def get_devices(include_links=False):

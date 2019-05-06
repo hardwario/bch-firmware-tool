@@ -2,26 +2,31 @@
 import os
 import sys
 import json
+import yaml
 import requests
+from .yml_schema import source_yml_schema
 
-FIRMWARE_JSON_URL = "https://firmware.bigclown.com/json"
+DEFAULT_SOURCE = [
+    {
+        'type': 'list',
+        'url': "https://firmware.bigclown.com/json",
+    }
+]
 
 
 class FirmwareList:
 
-    def __init__(self, cache_dir):
+    def __init__(self, cache_dir, config_dir):
         self._list = []
+        self._source = None
+
         self._cache_dir = cache_dir
-        # print(cache_dir)
+        self._config_dir = config_dir
 
-        if not os.path.exists(self._cache_dir):
-            os.makedirs(self._cache_dir)
+        os.makedirs(self._cache_dir, exist_ok=True)
+        os.makedirs(self._config_dir, exist_ok=True)
 
-        bigclown_json = os.path.join(self._cache_dir, 'bigclown.json')
-        if os.path.exists(bigclown_json):
-            self._extend(json.load(open(bigclown_json)))
-        else:
-            self.update()
+        self._load_list_yml()
 
     def get_firmware(self, name):
         try:
@@ -77,19 +82,18 @@ class FirmwareList:
         return table
 
     def update(self):
-        print("Download list from %s" % FIRMWARE_JSON_URL)
-        bigclown_json = os.path.join(self._cache_dir, 'bigclown.json')
-        response = requests.get(FIRMWARE_JSON_URL, allow_redirects=True)
-        if response.status_code != 200:
-            raise Exception("Response status_code=%d" % response.status_code)
-        try:
-            data = response.json()
-        except Exception as e:
-            raise Exception("Bad json format")
+        self._load_source_yml()
+        for source in self._source:
+            if source['type'] == 'list':
+                print("Download list from %s" % source['url'])
 
-        json.dump(data, open(bigclown_json, 'w'))
+                response = requests.get(source['url'], allow_redirects=True)
+                if response.status_code != 200:
+                    raise Exception("Response status_code=%d" % response.status_code)
 
-        self._extend(data)
+                data = yaml.safe_load(response.text)
+                self._extend(data)
+        self._save_list_yml()
 
     def _extend(self, data):
         for new in data['list']:
@@ -102,6 +106,45 @@ class FirmwareList:
 
     def clear(self):
         self._list = []
-        bigclown_json = os.path.join(self._cache_dir, 'bigclown.json')
-        if os.path.exists(bigclown_json):
-            os.unlink(bigclown_json)
+        filename = os.path.join(self._cache_dir, 'firmware_list.yml')
+        if os.path.exists(filename):
+            os.unlink(filename)
+
+    def _load_list_yml(self):
+        filename = os.path.join(self._cache_dir, 'firmware_list.yml')
+
+        if os.path.exists(filename):
+            try:
+                with open(filename, 'r', encoding='utf-8') as fd:
+                    self._list = yaml.safe_load(fd)
+            except Exception as e:
+                raise Exception('Error load source yml ' + str(e))
+        else:
+            self.update()
+
+    def _save_list_yml(self):
+        filename = os.path.join(self._cache_dir, 'firmware_list.yml')
+        with open(filename, 'w', encoding='utf-8') as fd:
+            yaml.safe_dump(self._list, fd, indent=2)
+
+    def _load_source_yml(self):
+        if self._source is not None:
+            return
+
+        source_yml = DEFAULT_SOURCE
+        filename = os.path.join(self._config_dir, 'source.yml')
+        try:
+            if os.path.exists(filename):
+                with open(filename, 'r', encoding='utf-8') as fd:
+                    source_yml = yaml.safe_load(fd)
+        except Exception as e:
+            raise Exception('Error load source yml ' + str(e))
+
+        self._source = source_yml_schema.validate(source_yml)
+
+    def _save_source_yml(self):
+        if self._source is None:
+            return
+        filename = os.path.join(self._config_dir, 'source.yml')
+        with open(filename, 'w', encoding='utf-8') as fd:
+            yaml.safe_dump(self._list, fd, indent=2)
