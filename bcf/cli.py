@@ -327,7 +327,35 @@ def command_update():
     '''Update list of available firmware.'''
     fwlist = get_fwlist()
     fwlist.update()
-    click.echo('OK')
+
+
+@cli.group('source')
+def source():
+    '''Firmware source.'''
+
+
+@source.command('list')
+def command_source_list():
+    '''List firmware source.'''
+    for name in get_fwlist().source_get_list():
+        click.echo(name)
+
+
+@source.command('add')
+@click.argument('url', metavar="URL")
+def command_source_add(url):
+    '''Add firmware source.'''
+    get_fwlist().source_add(url)
+    click.secho('OK', fg='green')
+
+
+@source.command('remove')
+@click.option('--no-remove-from-list', 'remove_from_list', is_flag=True, help='Flag for remove from the bcf list.', default=True)
+@click.argument('url', metavar="URL")
+def command_source_remove(remove_from_list, url):
+    '''Remove firmware source.'''
+    get_fwlist().source_remove(url, remove_from_list)
+    click.secho('OK', fg='green')
 
 
 def main():
@@ -337,7 +365,7 @@ def main():
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        click.echo(str(e), err=True)
+        click.secho(str(e), err=True, fg='red')
         if os.getenv('DEBUG', False):
             raise e
         sys.exit(1)
