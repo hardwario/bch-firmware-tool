@@ -109,12 +109,17 @@ def command_devices(verbose=False, include_links=False):
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--read', type=str, help='Read EEPROM and save to file.', metavar='FILE')
 @click.option('--erase', is_flag=True, help='Erase EEPROM.')
+@click.option('--write', type=str, help='Read file adn write to EEPROM.', metavar='FILE')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
 @click.pass_context
-def command_eeprom(ctx, device, read, erase, dfu):
+def command_eeprom(ctx, device, read, erase, write, dfu):
     '''Work with EEPROM.'''
     if device is None:
         device = ctx.obj['device']
+
+    if not read and not erase and not write:
+        click.echo(ctx.get_help())
+        return
 
     device = select_device('dfu' if dfu else device)
 
@@ -123,6 +128,9 @@ def command_eeprom(ctx, device, read, erase, dfu):
 
     if erase:
         flasher.eeprom_erase(device, reporthook=print_progress_bar)
+
+    if write:
+        flasher.eeprom_write(device, write, address=0, length=6144, reporthook=print_progress_bar)
 
 
 def get_firmware_list(ctx, args, incomplete):

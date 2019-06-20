@@ -37,3 +37,16 @@ def eeprom_read(device, filename, address=0, length=6144, reporthook=None):
         dfu.eeprom_read(filename, address, length, reporthook=reporthook)
     else:
         uart.eeprom_read(device, filename, address, length, reporthook=reporthook)
+
+
+def eeprom_write(device, filename, address=0, length=6144, reporthook=None):
+    if 0 > address or address >= 6144:
+        raise Exception('Bad address, max: 6144')
+
+    if 0 >= length or length > 6144:
+        raise Exception('Bad length, max: 6144')
+
+    if device == 'dfu':
+        raise Exception('Not implemented.')
+    else:
+        uart.eeprom_write(device, filename, address, length, reporthook=reporthook)

@@ -604,7 +604,10 @@ def get_list_devices():
     return table
 
 
-def eeprom_read(device, filename, address=0, length=6144, reporthook=None, api=None, baudrate=921600, label='Read EEPROM'):
+def eeprom_read(device, filename, address=0, length=6144, reporthook=None, run=True, api=None, baudrate=921600, label='Read EEPROM'):
+    if length > 6144:
+        raise Exception('Max length is 6144B.')
+
     if api is None:
         api = Flash_Serial(device, baudrate)
         _run_connect(api)
@@ -634,6 +637,41 @@ def eeprom_read(device, filename, address=0, length=6144, reporthook=None, api=N
             reporthook(label, offset + read_len, length)
 
     f.close()
+
+    if run:
+        api.go(0x08000000)
+
+
+def eeprom_write(device, filename, address=0, length=6144, reporthook=None, run=True, api=None, baudrate=921600, label='Write EEPROM'):
+    if length > 6144:
+        raise Exception('Max length is 6144.')
+
+    if api is None:
+        api = Flash_Serial(device, baudrate)
+        _run_connect(api)
+
+    with open(filename, 'rb') as f:
+        data = f.read(length)
+
+    start_address = 0x08080000 + address
+
+    if reporthook:
+        reporthook(label, 0, length)
+
+    step = 128
+    for offset in range(0, length, step):
+        write_len = length - offset
+        if write_len > step:
+            write_len = step
+
+        if _try_run(api, 6, api.write_memory, start_address + offset, data[offset:offset + write_len]):
+            if reporthook:
+                reporthook(label, offset + write_len, length)
+        else:
+            raise Exception(label + ' Error')
+
+    if run:
+        api.go(0x08000000)
 
 
 def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600, label='Erase EEPROM'):
