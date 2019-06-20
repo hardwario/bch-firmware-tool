@@ -278,6 +278,17 @@ def _run_connect(api):
             i += 1
 
 
+def _try_run(api, ntry, fce, *params):
+    for i in range(ntry):
+        response = fce(*params)
+        if response:
+            return response
+        if i % 2 == 1:
+            _run_connect(api)
+    else:
+        return False
+
+
 def erase(device, length=196608, reporthook=None, api=None, label='Erase '):
     if api is None:
         api = Flash_Serial(device)
@@ -295,11 +306,11 @@ def erase(device, length=196608, reporthook=None, api=None, label='Erase '):
         if page_stop > pages:
             page_stop = pages
 
-        if not api.extended_erase_memory(range(page_start, page_stop)):
-            raise Exception('Errase error')
-
-        if reporthook:
-            reporthook(label, page_stop, pages)
+        if _try_run(api, 6, api.extended_erase_memory, range(page_start, page_stop)):
+            if reporthook:
+                reporthook(label, page_stop, pages)
+        else:
+            raise Exception(label + ' Error')
 
 
 def write(device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Write '):
@@ -317,15 +328,12 @@ def write(device, firmware, reporthook=None, api=None, start_address=0x08000000,
         write_len = length - offset
         if write_len > step:
             write_len = step
-        for i in range(4):
-            if api.write_memory(start_address + offset, firmware[offset:offset + write_len]):
-                if reporthook:
-                    reporthook(label, offset + write_len, length)
-                break
-            if i == 2:
-                _run_connect(api)
+
+        if _try_run(api, 6, api.write_memory, start_address + offset, firmware[offset:offset + write_len]):
+            if reporthook:
+                reporthook(label, offset + write_len, length)
         else:
-            raise Exception('Write error')
+            raise Exception(label + ' Error')
 
 
 def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Verify'):
@@ -340,14 +348,13 @@ def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000
         read_len = length - offset
         if read_len > step:
             read_len = step
-        for i in range(4):
-            data = api.read_memory(start_address + offset, read_len)
-            if data == firmware[offset:offset + read_len]:
+
+        for i in range(2):
+            data = _try_run(api, 6, api.read_memory, start_address + offset, read_len)
+            if data and data == firmware[offset:offset + read_len]:
                 break
-            if i == 2:
-                _run_connect(api)
         else:
-            raise Exception('not match')
+            raise Exception(label + ' Error')
 
         if reporthook:
             reporthook(label, offset + read_len, length)
@@ -365,16 +372,14 @@ def clone(device, filename, length, reporthook=None, api=None, start_address=0x0
         if read_len > step:
             read_len = step
 
-        for i in range(4):
-            data = api.read_memory(start_address + offset, read_len)
-            verify = api.read_memory(start_address + offset, read_len)
+        for i in range(2):
+            data = _try_run(api, 6, api.read_memory, start_address + offset, read_len)
+            verify = _try_run(api, 6, api.read_memory, start_address + offset, read_len)
             if data == verify:
                 f.write(data)
                 break
-            if i == 2:
-                _run_connect(api)
         else:
-            raise Exception('not match')
+            raise Exception(label + ' Error')
 
         if reporthook:
             reporthook(label, offset + read_len, length)
@@ -420,7 +425,7 @@ def _flash_bin_diff(device, filename, reporthook, api, start_address=0x08000000)
         if read_len > page_size:
             read_len = page_size
 
-        data = api.read_memory(start_address + offset, read_len)
+        data = _try_run(api, 6, api.read_memory, start_address + offset, read_len)
 
         if data != firmware[offset:offset + read_len]:
             diff_pages.append(page)
@@ -433,27 +438,21 @@ def _flash_bin_diff(device, filename, reporthook, api, start_address=0x08000000)
     if diff_pages:
         print('Diff pages', len(diff_pages), 'of', pages)
         for i in range(0, len(diff_pages), 80):
-
-            if not api.extended_erase_memory(diff_pages[i:i + 80]):
+            if _try_run(api, 6, api.extended_erase_memory, diff_pages[i:i + 80]):
+                if reporthook:
+                    reporthook('Erase diff pages', i + 80, len(diff_pages))
+            else:
                 raise Exception('Errase error')
-
-            if reporthook:
-                reporthook('Erase diff pages', i + 80, len(diff_pages))
 
         for i, page in enumerate(diff_pages):
             offset = page * page_size
             data = firmware[offset:offset + page_size]
             if data:
-                for j in range(3):
-                    if api.write_memory(start_address + offset, data):
-                        break
-                    if j == 1:
-                        _run_connect(api)
+                if _try_run(api, 6, api.write_memory, start_address + offset, data):
+                    if reporthook:
+                        reporthook('Write diff pages', i + 1, len(diff_pages))
                 else:
                     raise Exception('Write error')
-
-            if reporthook:
-                reporthook('Write diff pages', i + 1, len(diff_pages))
 
 
 def _flash_bin(device, filename, reporthook, api, skip_verify):
@@ -507,11 +506,11 @@ def _flash_hex(device, filename, reporthook, api, skip_verify):
                     if page_stop > s_pages:
                         page_stop = s_pages
 
-                    if not api.extended_erase_memory(range(page_start, page_stop)):
-                        raise Exception('Errase error')
-
-                    if reporthook:
-                        reporthook('Erase ', done + page_stop, pages)
+                    if _try_run(api, 6, api.extended_erase_memory, range(page_start, page_stop)):
+                        if reporthook:
+                            reporthook('Erase ', done + page_stop, pages)
+                    else:
+                        raise Exception('Errase Error')
 
                 done += s_pages
 
@@ -529,16 +528,12 @@ def _flash_hex(device, filename, reporthook, api, skip_verify):
 
             data = sih[address_start:address_stop].tobinstr()
 
-            for i in range(4):
-                if api.write_memory(address_start, data):
-                    if reporthook:
-                        done += address_stop - address_start
-                        reporthook('Write ', done, length)
-                    break
-                if i == 2:
-                    _run_connect(api)
+            if _try_run(api, 6, api.write_memory, address_start, data):
+                if reporthook:
+                    done += address_stop - address_start
+                    reporthook('Write ', done, length)
             else:
-                raise Exception('Write error')
+                raise Exception('Write Error')
 
     if skip_verify:
         return
@@ -557,18 +552,15 @@ def _flash_hex(device, filename, reporthook, api, skip_verify):
 
             data = sih[address_start:address_stop].tobinstr()
 
-            for i in range(4):
-                vdata = api.read_memory(address_start, len(data))
-
+            for i in range(2):
+                vdata = _try_run(api, 6, api.read_memory, address_start, len(data))
                 if vdata == data:
                     if reporthook:
                         done += address_stop - address_start
                         reporthook('Verify', done, length)
                     break
-                if i == 2:
-                    _run_connect(api)
             else:
-                raise Exception('not match')
+                raise Exception('Verify Error')
 
 
 def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False, baudrate=921600):
@@ -583,11 +575,15 @@ def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unpro
         eeprom_erase(device, reporthook=reporthook, run=False, api=api)
 
     if filename.endswith(".hex"):
-        _flash_hex(device, filename, reporthook, api, skip_verify)
-    if diff:
-        _flash_bin_diff(device, filename, reporthook, api)
+        if diff:
+            raise Exception('Diff is not implemented')
+        else:
+            _flash_hex(device, filename, reporthook, api, skip_verify)
     else:
-        _flash_bin(device, filename, reporthook, api, skip_verify)
+        if diff:
+            _flash_bin_diff(device, filename, reporthook, api)
+        else:
+            _flash_bin(device, filename, reporthook, api, skip_verify)
 
     if run:
         api.go(0x08000000)
@@ -625,16 +621,14 @@ def eeprom_read(device, filename, address=0, length=6144, reporthook=None, api=N
         if read_len > step:
             read_len = step
 
-        for i in range(4):
-            data = api.read_memory(start_address + offset, read_len)
-            verify = api.read_memory(start_address + offset, read_len)
+        for i in range(2):
+            data = _try_run(api, 6, api.read_memory, start_address + offset, read_len)
+            verify = _try_run(api, 6, api.read_memory, start_address + offset, read_len)
             if data == verify:
                 f.write(data)
                 break
-            if i == 2:
-                _run_connect(api)
         else:
-            raise Exception('not match')
+            raise Exception(label + ' Error')
 
         if reporthook:
             reporthook(label, offset + read_len, length)
@@ -660,15 +654,12 @@ def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600, l
         write_len = length - offset
         if write_len > step:
             write_len = step
-        for i in range(4):
-            if api.write_memory(start_address + offset, data):
-                if reporthook:
-                    reporthook(label, offset + write_len, length)
-                break
-            if i == 2:
-                _run_connect(api)
+
+        if _try_run(api, 6, api.write_memory, start_address + offset, data):
+            if reporthook:
+                reporthook(label, offset + write_len, length)
         else:
-            raise Exception('Write error')
+            raise Exception(label + ' Error')
 
     if run:
         api.go(0x08000000)
