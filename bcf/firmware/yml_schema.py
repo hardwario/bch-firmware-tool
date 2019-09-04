@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from schema import Schema, And, Or, Use, Optional, SchemaError
+import os
 
 meta_yml_schema = Schema({
     Optional('description'): Or(str, None),
@@ -7,8 +8,21 @@ meta_yml_schema = Schema({
     Optional('video'): Or(str, None),
     Optional('images'): [
         {
-            'url': Or(And(str, len), None),
+            'url': And(str, len),
             Optional('title'): Or(str, None),
+        }
+    ],
+    Optional('articles'): [
+        {
+            'url': And(str, len),
+            Optional('title'): Or(str, None),
+            Optional('images'): [
+                {
+                    'url': And(str, len),
+                    Optional('title'): Or(str, None),
+                }
+            ],
+            Optional('video'): Or(str, None),
         }
     ],
     Optional('assembly'): [
@@ -30,3 +44,27 @@ source_yml_schema = Schema(
         }
     ]
 )
+
+
+def validate(schema, data):
+    try:
+        schema.validate(data)
+    except SchemaError as e:
+        error = []
+        n = 0
+        for row in e.autos:
+
+            i = row.find('did not validate')
+            if i > -1:
+                row = 'D' + row[i + 1:]
+
+            if row.startswith('Wrong keys'):
+                del error[-1]
+                n -= 2
+
+            error.append(" " * n + row)
+            n += 2
+
+        raise Exception(os.linesep.join(error))
+
+    return True
