@@ -14,6 +14,8 @@ import platform
 from bcf import flasher
 from bcf.log import log as bcflog
 from bcf.utils import *
+from bcf.firmware.utils import load_meta_yaml
+
 
 __version__ = '@@VERSION@@'
 SKELETON_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-skeleton/zip/master'
@@ -364,6 +366,42 @@ def command_source_remove(remove_from_list, url):
     '''Remove firmware source.'''
     get_fwlist().source_remove(url, remove_from_list)
     click.secho('OK', fg='green')
+
+
+@cli.command('test')
+@click.argument('path', metavar="PATH", default='.')
+@click.option('--skip-url', 'skip_url', is_flag=True, help='Skip testing the availability of urls.')
+def command_test(path, skip_url):
+    '''Test firmware source.'''
+    meta_yml_filename = os.path.join(path, 'meta.yml')
+
+    click.echo('Test %s' % meta_yml_filename)
+
+    with open(meta_yml_filename, 'r') as fd:
+        meta_yaml = load_meta_yaml(fd)
+
+    click.echo("  - file is valid")
+
+    if not skip_url:
+        if 'article' in meta_yaml:
+            test_url(meta_yaml['article'])
+        if 'articles' in meta_yaml:
+            for article in meta_yaml['articles']:
+                test_url(article['url'])
+                if 'video' in article:
+                    test_url(article['video'])
+                if 'images' in article:
+                    for image in article['images']:
+                        test_url(image['url'])
+        if 'images' in meta_yaml:
+            for image in meta_yaml['images']:
+                test_url(image['url'])
+        if 'assembly' in meta_yaml:
+            for assembly in meta_yaml['assembly']:
+                if 'url' in assembly:
+                    test_url(assembly['url'])
+                if 'image' in assembly:
+                    test_url(assembly['image'])
 
 
 def main():
