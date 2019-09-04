@@ -29,6 +29,14 @@ class FirmwareList:
             for fw in row['list']:
                 yield fw
 
+    def get_firmware(self, name):
+        index = name.find(':')
+        if index > -1:
+            name = name[:index]
+        for firmware in self.firmware_iter():
+            if name == firmware['name']:
+                return firmware
+
     def get_firmware_version(self, name):
         try:
             name, version = name.split(':')
@@ -47,15 +55,16 @@ class FirmwareList:
                     if version == v['name']:
                         return v
 
-    def get_firmware_list(self, startswith=None):
+    def get_firmware_list(self, startswith=None, add_latest=True):
+        suffix = ':latest' if add_latest else ''
         if startswith:
             array = []
             for firmware in self.firmware_iter():
                 if firmware['name'].startswith(startswith):
-                    array.append(firmware['name'] + ':latest')
+                    array.append(firmware['name'] + suffix)
             return array
         else:
-            return [firmware['name'] + ':latest' for firmware in self.firmware_iter()]
+            return [firmware['name'] + suffix for firmware in self.firmware_iter()]
 
     def get_firmware_table(self, search='', all=False, description=False, show_pre_release=False):
         table = []

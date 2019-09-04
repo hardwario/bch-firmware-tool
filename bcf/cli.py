@@ -18,7 +18,6 @@ from bcf.firmware.utils import load_meta_yaml
 
 
 __version__ = '@@VERSION@@'
-SKELETON_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-skeleton/zip/master'
 SDK_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-sdk/zip/master'
 SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
 VSCODE_GIT = 'https://github.com/bigclownlabs/bcf-vscode.git'
@@ -45,29 +44,49 @@ def command_clean():
         os.unlink(os.path.join(user_cache_dir, filename))
 
 
+def _create_get_firmware_list(ctx, args, incomplete):
+    if 'bigclownlabs/bcf-skeleton'.startswith(incomplete):
+        return ['bigclownlabs/bcf-skeleton'] + get_fwlist().get_firmware_list(startswith=incomplete, add_latest=False)
+    else:
+        return get_fwlist().get_firmware_list(startswith=incomplete, add_latest=False)
+
+
 @cli.command('create')
 @click.argument('name')
 @click.option('--no-git', is_flag=True, help='Disable git.')
-def command_create(name, no_git=False):
+@click.option('--from', '_from', help='Disable git.', default='bigclownlabs/bcf-skeleton', autocompletion=_create_get_firmware_list)
+def command_create(name, no_git, _from):
     '''Create new firmware.'''
+
     if os.path.exists(name):
         print('Directory already exists')
         sys.exit(1)
 
-    skeleton_zip_filename = download_url(SKELETON_URL_ZIP, use_cache=False)
+    if _from == 'bigclownlabs/bcf-skeleton':
+        repo_zip_file = 'https://codeload.github.com/bigclownlabs/bcf-skeleton/zip/master'
+    else:
+        fwlist = get_fwlist()
+        fw = fwlist.get_firmware(_from)
+
+        if not fw:
+            raise Exception('Firmware not found.')
+
+        repo_zip_file = fw['repository'].replace('github.com', 'codeload.github.com') + '/zip/master'
+
+    zip_filename = download_url(repo_zip_file, use_cache=False)
     click.echo()
 
     tmp_dir = tempfile.mkdtemp()
 
-    zip_ref = zipfile.ZipFile(skeleton_zip_filename, 'r')
+    zip_ref = zipfile.ZipFile(zip_filename, 'r')
     zip_ref.extractall(tmp_dir)
     zip_ref.close()
 
     skeleton_path = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
     shutil.move(skeleton_path, name)
 
-    os.rmdir(os.path.join(name, 'sdk'))
-    os.rmdir(os.path.join(name, '.vscode'))
+    shutil.rmtree(os.path.join(name, 'sdk'), ignore_errors=True)
+    shutil.rmtree(os.path.join(name, '.vscode'), ignore_errors=True)
     os.unlink(os.path.join(name, '.gitmodules'))
 
     os.chdir(name)
@@ -135,13 +154,13 @@ def command_eeprom(ctx, device, read, erase, write, dfu):
         flasher.eeprom_write(device, write, address=0, length=6144, reporthook=print_progress_bar)
 
 
-def get_firmware_list(ctx, args, incomplete):
+def _flash_get_firmware_list(ctx, args, incomplete):
     files = list(filter(lambda name: name.startswith(incomplete), glob.glob('*.bin')))
     return files + get_fwlist().get_firmware_list(startswith=incomplete)
 
 
 @cli.command('flash')
-@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", autocompletion=get_firmware_list)
+@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", autocompletion=_flash_get_firmware_list)
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--log', is_flag=True, help='Show all releases.')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
@@ -171,7 +190,7 @@ def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_ver
         fwlist = get_fwlist()
         firmware = fwlist.get_firmware_version(what)
         if not firmware:
-            print('Firmware not found, try updating first, command: bcf update')
+            raise Exception('Firmware not found, try updating first, command: bcf update')
             sys.exit(1)
         filename = download_url(firmware['url'])
 
