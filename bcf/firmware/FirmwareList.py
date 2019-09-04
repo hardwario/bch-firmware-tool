@@ -29,7 +29,7 @@ class FirmwareList:
             for fw in row['list']:
                 yield fw
 
-    def get_firmware(self, name):
+    def get_firmware_version(self, name):
         try:
             name, version = name.split(':')
         except Exception as e:

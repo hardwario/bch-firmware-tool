@@ -169,7 +169,7 @@ def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_ver
 
     else:
         fwlist = get_fwlist()
-        firmware = fwlist.get_firmware(what)
+        firmware = fwlist.get_firmware_version(what)
         if not firmware:
             print('Firmware not found, try updating first, command: bcf update')
             sys.exit(1)
@@ -268,12 +268,12 @@ def command_pull(what):
 
         if what in ('last', 'latest'):
             for name in fwlist.get_firmware_list():
-                firmware = fwlist.get_firmware(name)
+                firmware = fwlist.get_firmware_version(name)
                 click.echo('pull ' + name)
                 download_url(firmware['url'], True)
                 click.echo('')
         else:
-            firmware = fwlist.get_firmware(what)
+            firmware = fwlist.get_firmware_version(what)
             if not firmware:
                 print('Firmware not found, try updating first, command: bcf update')
                 sys.exit(1)
