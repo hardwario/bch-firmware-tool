@@ -12,7 +12,7 @@ import logging
 import re
 import yaml
 import requests
-from .yml_schema import meta_yml_schema
+from .yml_schema import meta_yml_schema, validate
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,9 @@ class GithubApi:
         if self._cache_dir and not os.path.exists(self._cache_dir):
             os.makedirs(self._cache_dir)
 
+        self._session = requests.Session()
+
         if oauth_token:
-            self._session = requests.Session()
             self._session.headers.update({'Authorization': "token " + oauth_token})
 
     def get_cache_dir(self):
@@ -118,7 +119,8 @@ class GithubApi:
                 meta_yaml = yaml.safe_load(response.content)
 
                 try:
-                    meta_yml_schema.validate(meta_yaml)
+                    validate(meta_yml_schema, meta_yaml)
+
                     firmware.update(meta_yaml)
                 except Exception as e:
                     logger.warning(str(e))
