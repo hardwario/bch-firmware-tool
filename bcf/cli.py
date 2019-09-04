@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import serial
 import platform
+import re
 from bcf import flasher
 from bcf.log import log as bcflog
 from bcf.utils import *
@@ -62,16 +63,20 @@ def command_create(name, no_git, _from):
         print('Directory already exists')
         sys.exit(1)
 
+    _from = _from.rstrip('/')
+
     if _from == 'bigclownlabs/bcf-skeleton':
-        repo_zip_file = 'https://codeload.github.com/bigclownlabs/bcf-skeleton/zip/master'
+        repository = 'https://github.com/bigclownlabs/bcf-skeleton'
+    elif re.match('^https://github.com/[^/]+/[^/]+$', _from):
+        repository = _from
     else:
         fwlist = get_fwlist()
         fw = fwlist.get_firmware(_from)
-
         if not fw:
             raise Exception('Firmware not found.')
+        repository = fw['repository']
 
-        repo_zip_file = fw['repository'].replace('github.com', 'codeload.github.com') + '/zip/master'
+    repo_zip_file = repository.replace('github.com', 'codeload.github.com') + '/zip/master'
 
     zip_filename = download_url(repo_zip_file, use_cache=False)
     click.echo()
