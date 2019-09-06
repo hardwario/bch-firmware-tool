@@ -16,6 +16,7 @@ meta_yml_schema = Schema({
         {
             'url': And(str, len),
             Optional('title'): Or(str, None),
+            Optional('description'): Or(str, None),
             Optional('images'): [
                 {
                     'url': And(str, len),
