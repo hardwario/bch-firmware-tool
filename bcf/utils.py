@@ -139,12 +139,3 @@ def print_progress_bar(title, progress, total, length=20):
     if percent == 100:
         sys.stdout.write('\n')
         sys.stdout.flush()
-
-
-def test_url(url, expected_status_code=200):
-    click.echo('  - url: %s ... ' % url, nl=False)
-    response = requests.head(url, allow_redirects=True)
-    if response.status_code != 204 and response.status_code != 200:
-        click.echo()
-        raise Exception('Bad status code %s' % response.status_code)
-    click.echo('ok')

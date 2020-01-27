@@ -8,6 +8,7 @@ import hashlib
 import uuid
 import click
 from .yml_schema import source_yml_schema
+from . import utils
 
 
 class FirmwareList:
@@ -95,28 +96,9 @@ class FirmwareList:
         self._load_source_yml()
         for source in self._source:
             if source['type'] == 'list':
-                click.echo("Download list from %s ..." % source['url'], nl=False)
-
-                try:
-                    response = requests.get(source['url'], allow_redirects=True)
-
-                    if response.status_code < 200 or response.status_code >= 300:
-                        raise Exception("Response status_code=%d" % response.status_code)
-
-                    data = yaml.safe_load(response.text)
-
-                    sys.stdout.write('\r\r')
-                    click.secho("Download list from %s    " % source['url'], fg='green')
-
+                data = utils.load_source_from_url(source['url'])
+                if data:
                     self._list_update(source, data)
-
-                except Exception as e:
-                    sys.stdout.write('\r\r')
-                    click.secho("Download list from %s    " % source['url'], nl=False, fg='red')
-                    if isinstance(e, requests.exceptions.ConnectionError):
-                        click.echo("Unable to connect to server")
-                    else:
-                        click.echo("Error " + str(e))
 
         self._save_list_yml()
 

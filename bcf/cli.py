@@ -15,7 +15,7 @@ import re
 from bcf import flasher
 from bcf.log import log as bcflog
 from bcf.utils import *
-from bcf.firmware.utils import load_meta_yaml
+import bcf.firmware.utils as futils
 
 
 __version__ = '@@VERSION@@'
@@ -392,6 +392,18 @@ def command_source_remove(remove_from_list, url):
     click.secho('OK', fg='green')
 
 
+@source.command('test')
+def command_source_test():
+    '''Test firmware source.'''
+    for name in get_fwlist().source_get_list():
+        click.echo(name)
+        data = futils.load_source_from_url(name)
+        if data:
+            for fwdata in data['list']:
+                click.echo(fwdata['repository'])
+                futils.test_firmware_resources(fwdata)
+
+
 @cli.command('test')
 @click.argument('path', metavar="PATH", default='.')
 @click.option('--skip-url', 'skip_url', is_flag=True, help='Skip testing the availability of urls.')
@@ -402,30 +414,12 @@ def command_test(path, skip_url):
     click.echo('Test %s' % meta_yml_filename)
 
     with open(meta_yml_filename, 'r') as fd:
-        meta_yaml = load_meta_yaml(fd)
+        meta_yaml = futils.load_meta_yaml(fd)
 
     click.echo("  - file is valid")
 
     if not skip_url:
-        if 'article' in meta_yaml:
-            test_url(meta_yaml['article'])
-        if 'articles' in meta_yaml:
-            for article in meta_yaml['articles']:
-                test_url(article['url'])
-                if 'video' in article:
-                    test_url(article['video'])
-                if 'images' in article:
-                    for image in article['images']:
-                        test_url(image['url'])
-        if 'images' in meta_yaml:
-            for image in meta_yaml['images']:
-                test_url(image['url'])
-        if 'assembly' in meta_yaml:
-            for assembly in meta_yaml['assembly']:
-                if 'url' in assembly:
-                    test_url(assembly['url'])
-                if 'image' in assembly:
-                    test_url(assembly['image'])
+        futils.test_firmware_resources(meta_yaml)
 
 
 def main():
