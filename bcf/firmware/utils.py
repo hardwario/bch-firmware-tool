@@ -54,6 +54,8 @@ def test_firmware_resources(data, skip_error=True):
 
     if 'article' in data:
         test_url(data['article'])
+    if 'video' in data:
+        test_url(data['video'])
     if 'articles' in data:
         for article in data['articles']:
             test_url(article['url'])
