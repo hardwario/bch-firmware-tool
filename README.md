@@ -1,14 +1,14 @@
-<a href="https://www.bigclown.com/"><img src="https://bigclown.sirv.com/logo.png" width="200" alt="BigClown Logo" align="right"></a>
+<a href="https://www.hardwario.com/"><img src="https://www.hardwario.com/ci/assets/hw-logo.svg" width="200" alt="HARDWARIO Logo" align="right"></a>
 
-# Host Application - BigClown Firmware Tool
+# Host Application - HARDWARIO Firmware Tool
 
 [![Travis](https://img.shields.io/travis/bigclownlabs/bch-firmware-tool/master.svg)](https://travis-ci.org/bigclownlabs/bch-firmware-tool)
 [![Release](https://img.shields.io/github/release/bigclownlabs/bch-firmware-tool.svg)](https://github.com/bigclownlabs/bch-firmware-tool/releases)
 [![License](https://img.shields.io/github/license/bigclownlabs/bch-firmware-tool.svg)](https://github.com/bigclownlabs/bch-firmware-tool/blob/master/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/bcf.svg)](https://pypi.org/project/bcf/)
-[![Twitter](https://img.shields.io/twitter/follow/BigClownLabs.svg?style=social&label=Follow)](https://twitter.com/BigClownLabs)
+[![Twitter](https://img.shields.io/twitter/follow/hardwario_en.svg?style=social&label=Follow)](https://twitter.com/hardwario_en)
 
-This repository contains BigClown Firmware Tool.
+This repository contains HARDWARIO Firmware Tool.
 
 ## Installing
 
@@ -35,7 +35,7 @@ Now you can for example write `bcf --de`, press TAB and `--device` text is autom
 
 Usage: bcf [OPTIONS] COMMAND [ARGS]...
 
-  BigClown Firmware Tool.
+  HARDWARIO Firmware Tool.
 
 Options:
   -d, --device TEXT  Device path.
