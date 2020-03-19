@@ -115,16 +115,14 @@ class GithubApi:
 
         for content in self.api_get("https://api.github.com/repos/" + owner_repo + "/contents"):
             if content["name"] == "meta.yml":
+                logger.debug("download %s", content['download_url'])
                 response = self._session.get(content['download_url'])
-                meta_yaml = yaml.safe_load(response.content)
-
                 try:
+                    meta_yaml = yaml.safe_load(response.content)
                     validate(meta_yml_schema, meta_yaml)
-
                     firmware.update(meta_yaml)
                 except Exception as e:
-                    logger.warning(str(e))
-
+                    logger.warning("Break meta.yml file.")
                 break
         else:
             logger.warning("No meta.yml file found.")
