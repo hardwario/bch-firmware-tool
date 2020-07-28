@@ -38,7 +38,7 @@ for firmware in firmware_list:
     if firmware['name'] == "bigclownlabs/bcf-gateway-usb-dongle":
         firmware["images"] = [{
             "title": "",
-            "url": "https://cdn.myshoptet.com/usr/shop.bigclown.com/user/shop/detail_alt_1/159-2.png?5a1af76a"
+            "url": "https://www.hardwario.com/kits-images/radio-dongle.png"
         }]
 
 payload = {
