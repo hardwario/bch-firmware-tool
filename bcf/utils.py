@@ -37,11 +37,23 @@ def get_devices(include_links=False):
 
 
 def select_device(device):
-    if device is None:
-        ports = get_devices()
-        if not ports:
-            raise Exception("No device")
+    if device is not None:
+        return
 
+    # Only keep the devices whose serial strings start with "bc-". A typical
+    # machine will have serial ports other than those created by
+    # BigClown/Hardwario devices and there is no need to consider those.
+
+    ports = [port for port in get_devices() if re.search(r"SER=bc-", port[2])]
+
+    if not ports:
+        raise Exception("No device")
+
+    if len(ports) == 1:
+        # If we found only one matching device, there is no need for the user to
+        # select the device. Use it right away.
+        d = 0
+    else:
         for i, port in enumerate(ports):
             sn = ""
             g = re.search(r"SER=([^\s]*)", port[2])
@@ -49,15 +61,17 @@ def select_device(device):
                 sn = g.group(1)
             click.echo("%i: %s %s" % (i, port[0], sn), err=True)
         d = click.prompt('Please choose device (line number)')
-        for port in ports:
-            if port[0] == d:
-                device = port[0]
-                break
-        else:
-            try:
-                device = ports[int(d)][0]
-            except Exception as e:
-                raise Exception("Unknown device")
+
+    for port in ports:
+        if port[0] == d:
+            device = port[0]
+            break
+    else:
+        try:
+            device = ports[int(d)][0]
+        except Exception as e:
+            raise Exception("Unknown device")
+
     return device
 
 
