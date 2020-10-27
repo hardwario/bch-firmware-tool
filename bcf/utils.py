@@ -37,11 +37,24 @@ def get_devices(include_links=False):
 
 
 def select_device(device):
-    if device is None:
-        ports = get_devices()
-        if not ports:
-            raise Exception("No device")
+    if device is not None:
+        return device
 
+    ports = get_devices()
+    if not ports:
+        raise Exception("No device")
+
+    # Search for devices with a serial string that starts with "bc-". If exactly
+    # once such device is found, select it automatically. This should hopefully
+    # simplify the common case where a developer has only one BigClown device
+    # connected to the host. Not having to specify the character device in this
+    # case works well with systems where the pathname of the character device is
+    # dynamic.
+    bc_ports = [port for port in ports if re.search(r"SER=bc-", port[2])]
+
+    if len(bc_ports) == 1:
+        return bc_ports[0][0]
+    else:
         for i, port in enumerate(ports):
             sn = ""
             g = re.search(r"SER=([^\s]*)", port[2])
@@ -49,15 +62,17 @@ def select_device(device):
                 sn = g.group(1)
             click.echo("%i: %s %s" % (i, port[0], sn), err=True)
         d = click.prompt('Please choose device (line number)')
-        for port in ports:
-            if port[0] == d:
-                device = port[0]
-                break
-        else:
-            try:
-                device = ports[int(d)][0]
-            except Exception as e:
-                raise Exception("Unknown device")
+
+    for port in ports:
+        if port[0] == d:
+            device = port[0]
+            break
+    else:
+        try:
+            device = ports[int(d)][0]
+        except Exception as e:
+            raise Exception("Unknown device")
+
     return device
 
 
