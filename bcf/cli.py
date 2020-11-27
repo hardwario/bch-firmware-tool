@@ -55,8 +55,9 @@ def _create_get_firmware_list(ctx, args, incomplete):
 @cli.command('create')
 @click.argument('name')
 @click.option('--no-git', is_flag=True, help='Disable git.')
-@click.option('--from', '_from', help='Disable git.', default='bigclownlabs/bcf-skeleton', autocompletion=_create_get_firmware_list)
-def command_create(name, no_git, _from):
+@click.option('--from', '_from', help='Disable git.', default='hardwario/bcf-skeleton', autocompletion=_create_get_firmware_list)
+@click.option('--depth', 'depth', help='Set git submodule clone depth.')
+def command_create(name, no_git, _from, depth):
     '''Create new firmware.'''
 
     if os.path.exists(name):
@@ -113,8 +114,9 @@ def command_create(name, no_git, _from):
 
     else:
         os.system('git init')
-        os.system('git submodule add --depth 1 "' + SDK_GIT + '" sdk')
-        os.system('git submodule add --depth 1 "' + VSCODE_GIT + '" .vscode')
+        depth = '' if not depth else ' --depth ' + str(depth)
+        os.system('git submodule add' + depth + ' "' + SDK_GIT + '" sdk')
+        os.system('git submodule add' + depth + ' "' + VSCODE_GIT + '" .vscode')
 
     os.rmdir(tmp_dir)
 
