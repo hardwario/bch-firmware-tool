@@ -19,10 +19,10 @@ import bcf.firmware.utils as futils
 
 
 __version__ = '@@VERSION@@'
-SDK_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-sdk/zip/master'
-SDK_GIT = 'https://github.com/bigclownlabs/bcf-sdk.git'
-VSCODE_GIT = 'https://github.com/bigclownlabs/bcf-vscode.git'
-VSCODE_URL_ZIP = 'https://codeload.github.com/bigclownlabs/bcf-vscode/zip/master'
+SDK_URL_ZIP = 'https://codeload.github.com/hardwario/bcf-sdk/zip/master'
+SDK_GIT = 'https://github.com/hardwario/bcf-sdk.git'
+VSCODE_GIT = 'https://github.com/hardwario/bcf-vscode.git'
+VSCODE_URL_ZIP = 'https://codeload.github.com/hardwario/bcf-vscode/zip/master'
 
 
 @click.group()
@@ -65,8 +65,8 @@ def command_create(name, no_git, _from):
 
     _from = _from.rstrip('/')
 
-    if _from == 'bigclownlabs/bcf-skeleton':
-        repository = 'https://github.com/bigclownlabs/bcf-skeleton'
+    if _from == 'hardwario/bcf-skeleton':
+        repository = 'https://github.com/hardwario/bcf-skeleton'
     elif re.match('^https://github.com/[^/]+/[^/]+$', _from):
         repository = _from
     else:
