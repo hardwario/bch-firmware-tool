@@ -2,9 +2,9 @@
 
 # Host Application - HARDWARIO Firmware Tool
 
-[![Travis](https://img.shields.io/travis/bigclownlabs/bch-firmware-tool/master.svg)](https://travis-ci.org/bigclownlabs/bch-firmware-tool)
-[![Release](https://img.shields.io/github/release/bigclownlabs/bch-firmware-tool.svg)](https://github.com/bigclownlabs/bch-firmware-tool/releases)
-[![License](https://img.shields.io/github/license/bigclownlabs/bch-firmware-tool.svg)](https://github.com/bigclownlabs/bch-firmware-tool/blob/master/LICENSE)
+[![Travis](https://img.shields.io/travis/hardwario/bch-firmware-tool/master.svg)](https://travis-ci.org/hardwario/bch-firmware-tool)
+[![Release](https://img.shields.io/github/release/hardwario/bch-firmware-tool.svg)](https://github.com/hardwario/bch-firmware-tool/releases)
+[![License](https://img.shields.io/github/license/hardwario/bch-firmware-tool.svg)](https://github.com/hardwario/bch-firmware-tool/blob/master/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/bcf.svg)](https://pypi.org/project/bcf/)
 [![Twitter](https://img.shields.io/twitter/follow/hardwario_en.svg?style=social&label=Follow)](https://twitter.com/hardwario_en)
 
