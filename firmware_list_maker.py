@@ -23,13 +23,8 @@ def sort_firmware_key(firmware):
             return str(i) + name
     return name
 
-firmware_list = ga.make_firmware_list_for_owner("hardwario-kit")
+firmware_list = ga.make_firmware_list_for_owner("hardwario")
 firmware_list.sort(key=sort_firmware_key)
-
-bigclownprojects_list = ga.make_firmware_list_for_owner("hardwario-projects")
-bigclownprojects_list.sort(key=sort_firmware_key)
-
-firmware_list += bigclownprojects_list
 
 print ("=== sorted ===")
 
@@ -38,11 +33,9 @@ for firmware in firmware_list:
     if firmware['name'] == "hardwario/bcf-gateway-usb-dongle":
         firmware["images"] = [{
             "title": "",
-            "url": "https://www.hardwario.com/kits-images/radio-dongle.png"
+            "url": "https://cdn.myshoptet.com/usr/shop.bigclown.com/user/shop/detail_alt_1/159-2.png?5a1af76a"
         }]
 
-with open('bc-yml') as f:
-    firmware_list += yaml.safe_load(f)['list']
 
 payload = {
     "list": firmware_list,
