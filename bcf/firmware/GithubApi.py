@@ -83,8 +83,10 @@ class GithubApi:
     def make_firmware_list_for_owner(self, owner):
         firmware_list = []
 
+        exclude = {'bcf-sdk', 'bcf-vscode', 'twr-sdk'}
+
         for repo in self.iter_repos(owner):
-            if repo['name'].startswith("bcf-") and repo['name'] not in {"bcf-sdk", "bcf-vscode", "bcf-skeleton"}:
+            if repo['name'][0:4] in {'twr-', 'bcf-'} and repo['name'] not in exclude:
                 logger.debug('repo %s/%s', owner, repo['name'])
 
                 firmware_list += self._make_firmware_list(owner, repo['name'], repo_obj=repo)
@@ -131,8 +133,11 @@ class GithubApi:
             for assets in release.get('assets', []):
                 if assets["name"].endswith(".bin"):
                     if not assets["name"].startswith(repo):
-                        logger.warning('file "%s" does not start the same as the repository name', assets["name"])
-                        continue
+                        # exception for rename repo from bcf- to twr- prefix
+                        is_bcf_prefix = assets["name"].startswith('bcf-') and repo.startswith('twr-') and assets["name"][4:].startswith(repo[4:])
+                        if not is_bcf_prefix:
+                            logger.warning('file "%s" does not start the same as the repository name', assets["name"])
+                            continue
 
                     name = assets["name"][:-4]
 
