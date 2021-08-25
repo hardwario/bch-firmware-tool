@@ -6,3 +6,4 @@ schema>=0.6.8
 requests>=2.21
 Click>=7.0
 intelhex>=2.2.1
+pyftdi>=0.53.3
