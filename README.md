@@ -48,6 +48,7 @@ Commands:
   devices  Print available devices.
   eeprom   Work with EEPROM.
   flash    Flash firmware.
+  ftdi     Update USB descriptors in the FTDI chip.
   help     Show help.
   list     List firmware.
   log      Show log.
@@ -55,6 +56,8 @@ Commands:
   read     Download firmware to file.
   reset    Reset core module.
   search   Search in firmware names and descriptions.
+  source   Firmware source.
+  test     Test firmware source.
   update   Update list of available firmware.
 ```
 
