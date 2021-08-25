@@ -44,13 +44,13 @@ def select_device(device):
     if not ports:
         raise Exception("No device")
 
-    # Search for devices with a serial string that starts with "bc-". If exactly
-    # once such device is found, select it automatically. This should hopefully
-    # simplify the common case where a developer has only one BigClown device
-    # connected to the host. Not having to specify the character device in this
-    # case works well with systems where the pathname of the character device is
-    # dynamic.
-    bc_ports = [port for port in ports if re.search(r"SER=bc-", port[2])]
+    # Search for devices with a serial string that starts with "bc-" or "hio-".
+    # If exactly once such device is found, select it automatically. This should
+    # hopefully simplify the common case where a developer has only one BigClown
+    # device connected to the host. Not having to specify the character device
+    # in this case works well with systems where the pathname of the character
+    # device is dynamic.
+    bc_ports = [port for port in ports if re.search(r"SER=(bc|hio)-", port[2])]
 
     if len(bc_ports) == 1:
         return bc_ports[0][0]
