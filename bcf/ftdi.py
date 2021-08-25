@@ -39,14 +39,19 @@ def print_devices(devices):
         serial = device.serial.strip()
 
         product = device.product.strip()
-        if product == '""': product = None
+        if product == '""':
+            product = None
 
         manufacturer = device.manufacturer.strip()
-        if manufacturer == '""': manufacturer = None
+        if manufacturer == '""':
+            manufacturer = None
 
         s = "%i: serial: %s" % (i, serial)
-        if product: s += ", product: %s" % product
-        if manufacturer: s += ", manufacturer: %s" % manufacturer
+        if product:
+            s += ", product: %s" % product
+
+        if manufacturer:
+            s += ", manufacturer: %s" % manufacturer
 
         click.echo(s)
 

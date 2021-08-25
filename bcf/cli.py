@@ -440,7 +440,6 @@ def command_ftdi(sn, manufacturer=None, product=None, serial=None, reset=False):
         ftdi.list_devices(sn)
 
 
-
 def main():
     '''Application entry point.'''
     try:
