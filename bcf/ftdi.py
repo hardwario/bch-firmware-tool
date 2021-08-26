@@ -17,9 +17,6 @@ def scan_devices(sn):
     ftdi = Ftdi()
     devices = [d[0] for d in ftdi.list_devices()]
 
-    # Keep only devices with a serial number
-    devices = [d for d in devices if len(d.sn.strip()) and d.sn != '""']
-
     # If the caller gave us a serial or a regex, keep only matching devices
     if sn:
         devices = [d for d in devices if re.search(sn, d.sn)]
@@ -37,6 +34,8 @@ def scan_devices(sn):
 def print_devices(devices):
     for i, device in enumerate(devices):
         serial = device.serial.strip()
+        if serial == '""':
+            serial = None
 
         product = device.product.strip()
         if product == '""':
@@ -46,12 +45,18 @@ def print_devices(devices):
         if manufacturer == '""':
             manufacturer = None
 
-        s = "%i: serial: %s" % (i, serial)
+        s = "%i:" % i
+        sep = " "
+        if serial:
+            s += "%sserial: %s" % (sep, serial)
+            sep = ", "
+
         if product:
-            s += ", product: %s" % product
+            s += "%sproduct: %s" % (sep, product)
+            sep = ", "
 
         if manufacturer:
-            s += ", manufacturer: %s" % manufacturer
+            s += "%smanufacturer: %s" % (sep, manufacturer)
 
         click.echo(s)
 
