@@ -77,15 +77,15 @@ def update_eeprom(sn, manufacturer=None, product=None, serial=None, reset=False)
     eeprom = select_device(sn)
     updated = False
 
-    if manufacturer and manufacturer != eeprom.manufacturer:
+    if manufacturer is not None and manufacturer != eeprom.manufacturer:
         eeprom.set_manufacturer_name(manufacturer)
         updated = True
 
-    if product and product != eeprom.product:
+    if product is not None and product != eeprom.product:
         eeprom.set_product_name(product)
         updated = True
 
-    if serial and serial != eeprom.serial:
+    if serial is not None and serial != eeprom.serial:
         eeprom.set_serial_number(serial)
         updated = True
 

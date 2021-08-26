@@ -434,7 +434,7 @@ def command_test(path, skip_url):
 def command_ftdi(sn, manufacturer=None, product=None, serial=None, reset=False):
     '''Update USB descriptors in the FTDI chip.'''
 
-    if manufacturer or product or serial or reset:
+    if manufacturer is not None or product is not None or serial is not None or reset:
         ftdi.update_eeprom(sn, manufacturer, product, serial, reset)
     else:
         ftdi.list_devices(sn)
