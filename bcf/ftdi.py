@@ -33,30 +33,18 @@ def scan_devices(sn):
 
 def print_devices(devices):
     for i, device in enumerate(devices):
-        serial = device.serial.strip()
-        if serial == '""':
-            serial = None
-
-        product = device.product.strip()
-        if product == '""':
-            product = None
-
-        manufacturer = device.manufacturer.strip()
-        if manufacturer == '""':
-            manufacturer = None
-
         s = "%i:" % i
         sep = " "
-        if serial:
-            s += "%sserial: %s" % (sep, serial)
+        if device.serial:
+            s += "%sserial: %s" % (sep, device.serial)
             sep = ", "
 
-        if product:
-            s += "%sproduct: %s" % (sep, product)
+        if device.product:
+            s += "%sproduct: %s" % (sep, device.product)
             sep = ", "
 
-        if manufacturer:
-            s += "%smanufacturer: %s" % (sep, manufacturer)
+        if device.manufacturer:
+            s += "%smanufacturer: %s" % (sep, device.manufacturer)
 
         click.echo(s)
 
