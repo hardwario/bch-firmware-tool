@@ -16,6 +16,7 @@ from bcf import flasher
 from bcf.log import log as bcflog
 from bcf.utils import *
 import bcf.firmware.utils as futils
+from bcf import ftdi
 
 
 __version__ = '@@VERSION@@'
@@ -422,6 +423,21 @@ def command_test(path, skip_url):
 
     if not skip_url:
         futils.test_firmware_resources(meta_yaml)
+
+
+@cli.command('ftdi')
+@click.option('-d', '--device', 'sn', type=str, help='FTDI device serial number (or regex).')
+@click.option('-m', '--manufacturer', type=str, help='Update the USB manufacturer string.')
+@click.option('-p', '--product', type=str, help='Update the USB product string.')
+@click.option('-s', '--serial', type=str, help='Update the USB serial string.')
+@click.option('-r', '--reset', is_flag=True, help='Force USB device reset.')
+def command_ftdi(sn, manufacturer=None, product=None, serial=None, reset=False):
+    '''Update USB descriptors in the FTDI chip.'''
+
+    if manufacturer is not None or product is not None or serial is not None or reset:
+        ftdi.update_eeprom(sn, manufacturer, product, serial, reset)
+    else:
+        ftdi.list_devices(sn)
 
 
 def main():
