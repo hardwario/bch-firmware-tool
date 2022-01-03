@@ -107,8 +107,6 @@ class GithubApi:
 
         logger.info(owner_repo)
 
-        firmware_dict = {}
-
         firmware = {}
         firmware['name'] = ""
         firmware['description'] = repo_obj['description'] if repo_obj and repo_obj['description'] else ""
@@ -135,7 +133,9 @@ class GithubApi:
                     if not assets["name"].startswith(repo):
                         # exception for rename repo from bcf- to twr- prefix
                         is_bcf_prefix = assets["name"].startswith('bcf-') and repo.startswith('twr-') and assets["name"][4:].startswith(repo[4:])
-                        if not is_bcf_prefix:
+                        if is_bcf_prefix:
+                            logger.warning('file has bcf prefix "%s"', assets["name"])
+                        else:
                             logger.warning('file "%s" does not start the same as the repository name', assets["name"])
                             continue
 
@@ -145,20 +145,14 @@ class GithubApi:
                         logger.warning('file %s does not end with the version name %s', assets["name"], release["tag_name"])
                         continue
 
-                    name = owner + "/" + name[:-len(release["tag_name"]) - 1]
-
-                    if name not in firmware_dict:
-                        firmware_dict[name] = copy.deepcopy(firmware)
-                        firmware_dict[name]['name'] = name
-
-                    firmware_dict[name]['versions'].append({
+                    firmware['versions'].append({
                         "name": release["tag_name"],
                         "prerelease": release['prerelease'],
                         "url": assets['browser_download_url'],
                         "date": release['published_at']
                     })
 
-        return list(firmware_dict.values())
+        return [firmware]
 
 
 if __name__ == "__main__":
