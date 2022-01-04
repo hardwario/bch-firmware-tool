@@ -23,8 +23,8 @@ pkgver_from_git() {
 	local desc
 	if desc="$(git describe --tags --exact-match --match 'v*' 2>/dev/null)"; then
 		echo "${desc#v}" | sed 's/[_-]/~/g'
-	elif desc="$(git describe --tags --match 'v*' 2>/dev/null)"; then
-		echo "$desc" | sed -En 's/^v([^-]+).*/\1~dev/p'
+	elif desc="$(git rev-parse --short=8 HEAD 2>/dev/null)"; then
+		echo "$desc"
 	else
 		return 1
 	fi
@@ -43,7 +43,7 @@ fi
 export PATH="$VENV_DIR/bin:$PATH"
 unset PYTHONHOME
 
-if [ -z "${TRAVIS_BUILD_DIR:-}" ]; then
+if [ -z "${CI:-}" ]; then
     BUILD_DIR="$(pwd)/build"
     echo "$BUILD_DIR"
     rm -rf "$BUILD_DIR"
