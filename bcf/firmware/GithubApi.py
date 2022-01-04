@@ -80,7 +80,7 @@ class GithubApi:
 
             page += 1
 
-    def make_firmware_list_for_owner(self, owner):
+    def make_firmware_list_for_owner(self, owner, ignore_empty=True):
         firmware_list = []
 
         exclude = {'bcf-sdk', 'bcf-vscode', 'twr-sdk'}
@@ -89,29 +89,33 @@ class GithubApi:
             if repo['name'][0:4] in {'twr-', 'bcf-'} and repo['name'] not in exclude:
                 logger.debug('repo %s/%s', owner, repo['name'])
 
-                firmware_list += self._make_firmware_list(owner, repo['name'], repo_obj=repo)
+                firmware_list += self._make_firmware_list(owner, repo['name'], repo_obj=repo, ignore_empty=ignore_empty)
 
         return firmware_list
 
-    def make_firmware_list_from_repo(self, url_or_name):
+    def make_firmware_list_from_repo(self, url_or_name, ignore_empty=True):
         match = re.search("(?:https://github.com/)?(.+)/(.+)", url_or_name)
         if not match:
             raise "Bad repo url or name format"
 
         owner, repo = match.groups()
 
-        return self._make_firmware_list(owner, repo)
+        return self._make_firmware_list(owner, repo, ignore_empty=ignore_empty)
 
-    def _make_firmware_list(self, owner, repo, repo_obj=None):
+    def _make_firmware_list(self, owner, repo, repo_obj=None, ignore_empty=True):
         owner_repo = owner + '/' + repo
 
         logger.info(owner_repo)
 
+        if repo_obj is None:
+            repo_obj = self.api_get("https://api.github.com/repos/" + owner_repo)
+
         firmware = {}
-        firmware['name'] = ""
+        firmware['name'] = repo_obj['full_name'] if repo_obj else owner_repo
         firmware['description'] = repo_obj['description'] if repo_obj and repo_obj['description'] else ""
         firmware['repository'] = "https://github.com/" + owner_repo
         firmware['versions'] = []
+        firmware['tags'] = repo_obj['topics']
 
         for content in self.api_get("https://api.github.com/repos/" + owner_repo + "/contents"):
             if content["name"] == "meta.yml":
@@ -151,6 +155,10 @@ class GithubApi:
                         "url": assets['browser_download_url'],
                         "date": release['published_at']
                     })
+
+        if ignore_empty and not firmware['versions']:
+            logger.warning('Empty versions')
+            return []
 
         return [firmware]
 
