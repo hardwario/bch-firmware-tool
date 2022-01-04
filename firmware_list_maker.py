@@ -12,9 +12,13 @@ import os
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+save_path = os.environ.get('SAVE_PATH', '/var/www/firmware')
+
+logging.info("Save path: %s", save_path)
+
 ga = GithubApi(oauth_token=os.environ.get('GIT_OAUTH_TOKEN', None))
 
-#pprint(ga.make_firmware_list_from_repo("bigclownprojects/bcf-radio-key-code")); exit()
+# pprint(ga.make_firmware_list_from_repo("hardwario/twr-radio-push-button")); exit()
 
 def sort_firmware_key(firmware):
     name = firmware['name']
@@ -23,13 +27,12 @@ def sort_firmware_key(firmware):
             return str(i) + name
     return name
 
-firmware_list = ga.make_firmware_list_for_owner("hardwario")
+firmware_list = ga.make_firmware_list_for_owner("hardwario", ignore_empty=True)
+
+logging.info("Sort")
 firmware_list.sort(key=sort_firmware_key)
 
-print ("=== sorted ===")
-
 for firmware in firmware_list:
-    print(firmware['name'])
     if firmware['name'] == "hardwario/bcf-gateway-usb-dongle":
         firmware["images"] = [{
             "title": "",
@@ -43,13 +46,13 @@ payload = {
     "version": 0
 }
 
-print("save YML")
-
-with open('/var/www/firmware/yml', 'w') as f:
+filename = os.path.join(save_path, 'yml')
+logging.info("Save to: %s", filename)
+with open(filename, 'w') as f:
     yaml.safe_dump(payload, f, indent=2, default_flow_style=False)
 
-print("save JSON")
-
-with open('/var/www/firmware/json', 'w') as f:
+filename = os.path.join(save_path, 'json')
+logging.info("Save to: %s", filename)
+with open(filename, 'w') as f:
     json.dump(payload, f, indent=2)
 
