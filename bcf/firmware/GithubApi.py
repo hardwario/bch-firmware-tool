@@ -110,6 +110,8 @@ class GithubApi:
         if repo_obj is None:
             repo_obj = self.api_get("https://api.github.com/repos/" + owner_repo)
 
+        firmware_dict = {}
+
         firmware = {}
         firmware['name'] = repo_obj['full_name'] if repo_obj else owner_repo
         firmware['description'] = repo_obj['description'] if repo_obj and repo_obj['description'] else ""
@@ -143,24 +145,25 @@ class GithubApi:
                             logger.warning('file "%s" does not start the same as the repository name', assets["name"])
                             continue
 
-                    name = assets["name"][:-4]
+                    name = owner + "/" + assets["name"][:-len(release["tag_name"]) - 5]
 
-                    if not name.endswith(release["tag_name"]):
-                        logger.warning('file %s does not end with the version name %s', assets["name"], release["tag_name"])
-                        continue
+                    if name not in firmware_dict:
+                        firmware_dict[name] = copy.deepcopy(firmware)
+                        firmware_dict[name]['name'] = name
 
-                    firmware['versions'].append({
+                    firmware_dict[name]['versions'].append({
                         "name": release["tag_name"],
                         "prerelease": release['prerelease'],
                         "url": assets['browser_download_url'],
                         "date": release['published_at']
                     })
 
-        if ignore_empty and not firmware['versions']:
-            logger.warning('Empty versions')
-            return []
+        for name in list(firmware_dict.keys()):
+            if ignore_empty and not firmware_dict[name]['versions']:
+                logger.warning(f'remove {name}, empty versions')
+                del firmware_dict[name]
 
-        return [firmware]
+        return list(firmware_dict.values())
 
 
 if __name__ == "__main__":
