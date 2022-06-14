@@ -12,6 +12,7 @@ import subprocess
 import serial
 import platform
 import re
+from packaging import version
 from bcf import flasher
 from bcf.log import log as bcflog
 from bcf.utils import *
@@ -31,7 +32,7 @@ VSCODE_URL_ZIP = 'https://codeload.github.com/hardwario/bcf-vscode/zip/master'
 @click.version_option(version=__version__)
 @click.pass_context
 def cli(ctx, device=None):
-    '''BigClown Firmware Tool.'''
+    '''HARDWARIO TOWER Firmware Tool.'''
     ctx.obj['device'] = device
     if not os.path.exists(user_cache_dir):
         os.makedirs(user_cache_dir)
@@ -53,10 +54,23 @@ def _create_get_firmware_list(ctx, args, incomplete):
         return get_fwlist().get_firmware_list(startswith=incomplete, add_latest=False)
 
 
+def _flash_get_firmware_list(ctx, args, incomplete):
+    files = list(filter(lambda name: name.startswith(incomplete), glob.glob('*.bin')))
+    return files + get_fwlist().get_firmware_list(startswith=incomplete)
+
+
+fwAutocompleteteArgs = {}
+
+if version.parse(click.__version__) >= version.Version('8.1'):
+    fwAutocompleteteArgs['shell_complete'] = _flash_get_firmware_list
+else:
+    fwAutocompleteteArgs['autocompletion'] = _flash_get_firmware_list
+
+
 @cli.command('create')
 @click.argument('name')
 @click.option('--no-git', is_flag=True, help='Disable git.')
-@click.option('--from', '_from', help='Disable git.', default='hardwario/bcf-skeleton', shell_complete=_create_get_firmware_list)
+@click.option('--from', '_from', help='Disable git.', default='hardwario/bcf-skeleton', **fwAutocompleteteArgs)
 @click.option('--depth', 'depth', help='Set git submodule clone depth.')
 def command_create(name, no_git, _from, depth):
     '''Create new firmware.'''
@@ -162,13 +176,8 @@ def command_eeprom(ctx, device, read, erase, write, dfu):
         flasher.eeprom_write(device, write, address=0, length=6144, reporthook=print_progress_bar)
 
 
-def _flash_get_firmware_list(ctx, args, incomplete):
-    files = list(filter(lambda name: name.startswith(incomplete), glob.glob('*.bin')))
-    return files + get_fwlist().get_firmware_list(startswith=incomplete)
-
-
 @cli.command('flash')
-@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", shell_complete=_flash_get_firmware_list)
+@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", **fwAutocompleteteArgs)
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--log', is_flag=True, help='Show all releases.')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
