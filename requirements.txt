@@ -6,5 +6,5 @@ schema>=0.7
 requests>=2.27
 Click>=8.0
 intelhex>=2.2.1
-pyftdi>=0.54
+pyftdi>=0.53
 packaging
