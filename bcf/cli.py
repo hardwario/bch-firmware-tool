@@ -56,7 +56,7 @@ def _create_get_firmware_list(ctx, args, incomplete):
 @cli.command('create')
 @click.argument('name')
 @click.option('--no-git', is_flag=True, help='Disable git.')
-@click.option('--from', '_from', help='Disable git.', default='hardwario/bcf-skeleton', autocompletion=_create_get_firmware_list)
+@click.option('--from', '_from', help='Disable git.', default='hardwario/bcf-skeleton', shell_complete=_create_get_firmware_list)
 @click.option('--depth', 'depth', help='Set git submodule clone depth.')
 def command_create(name, no_git, _from, depth):
     '''Create new firmware.'''
@@ -168,7 +168,7 @@ def _flash_get_firmware_list(ctx, args, incomplete):
 
 
 @cli.command('flash')
-@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", autocompletion=_flash_get_firmware_list)
+@click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", shell_complete=_flash_get_firmware_list)
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--log', is_flag=True, help='Show all releases.')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
