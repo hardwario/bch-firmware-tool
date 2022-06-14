@@ -18,14 +18,24 @@ You can install **bcf** directly from PyPI:
 sudo pip3 install -U bcf
 ```
 
-For Bash Complete add this line to `.bashrc`
-```
-eval "$(_BCF_COMPLETE=source bcf)"
-```
-Then run this command to reload .bashrc
-```
-source ~/.bashrc
-```
+## Enabling Completion
+
+
+* For Bash Complete add this line to `.bashrc`
+    ```
+    eval "$(_BCF_COMPLETE=bash_source bcf)"
+    ```
+    Then run this command to reload .bashrc
+    ```
+    source ~/.bashrc
+    ```
+
+
+* For Zsh Complete add this line to `.zshrc`
+    ```
+    eval "$(_BCF_COMPLETE=zsh_source bcf)"
+    ```
+
 Now you can for example write `bcf --de`, press TAB and `--device` text is automatically completed.
 
 ## Usage
