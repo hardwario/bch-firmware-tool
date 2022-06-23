@@ -108,7 +108,10 @@ class SerialPortLog(Log):
             try:
                 line = line.decode()
             except Exception as e:
-                continue
+                if self._raw:
+                    line = repr(line)
+                else:
+                    continue
 
             self.print(line)
 
