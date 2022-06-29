@@ -106,12 +106,9 @@ class SerialPortLog(Log):
                 continue
 
             try:
-                line = line.decode()
+                line = line.decode(errors='backslashreplace')
             except Exception as e:
-                if self._raw:
-                    line = repr(line)
-                else:
-                    continue
+                continue
 
             self.print(line)
 
