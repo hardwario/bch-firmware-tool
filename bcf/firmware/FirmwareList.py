@@ -10,6 +10,8 @@ import click
 from .yml_schema import source_yml_schema
 from . import utils
 
+DEFAULT_SOURCE_API = 'https://firmware.hardwario.com/tower/api/v1/list'
+
 
 class FirmwareList:
 
@@ -99,6 +101,10 @@ class FirmwareList:
                 data = utils.load_source_from_url(source['url'])
                 if data:
                     self._list_update(source, data)
+            elif source['type'] == 'api':
+                data = utils.load_source_from_url(source['url'])
+                if data:
+                    self._list_update(source, {'list': data})
 
         self._save_list_yml()
 
@@ -149,14 +155,14 @@ class FirmwareList:
         self._source.remove(source)
         self._save_source_yml()
 
-    def source_add(self, url):
+    def source_add(self, url, type):
         self._load_source_yml()
         for source in self._source:
             if source['url'] == url:
                 raise Exception('This source alredy exists.')
 
         source = {
-            'type': 'list',
+            'type': type,
             'url': url,
         }
 
@@ -198,9 +204,16 @@ class FirmwareList:
                 with open(filename, 'r', encoding='utf-8') as fd:
                     source_yml = yaml.safe_load(fd)
                     self._source = source_yml_schema.validate(source_yml)
+                    print(self._source)
+                    for source in self._source:
+                        if source['url'] == 'https://firmware.bigclown.com/json':
+                            source['url'] = DEFAULT_SOURCE_API
+                            source['type'] = 'api'
+                            self.clear()
+                            self._save_source_yml()
             else:
                 self._source = []
-                return self.source_add('https://firmware.bigclown.com/json')
+                return self.source_add(DEFAULT_SOURCE_API, 'api')
 
         except Exception as e:
             raise Exception('Error load source yml ' + str(e))

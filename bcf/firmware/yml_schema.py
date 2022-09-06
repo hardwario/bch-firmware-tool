@@ -40,7 +40,7 @@ source_yml_schema = Schema(
     [
         {
             'id': And(str, len),
-            'type': And(str, lambda x: x in ('list', )),
+            'type': And(str, lambda x: x in ('list', 'api',)),
             'url': And(str, len)
         }
     ]
