@@ -133,14 +133,19 @@ class GithubApi:
         else:
             logger.warning("No meta.yml file found.")
 
+        # download_count = 0
+
         for release in self.api_get("https://api.github.com/repos/" + owner_repo + "/releases"):
             for assets in release.get('assets', []):
                 if assets["name"].endswith(".bin"):
+                    # download_count += assets['download_count']
+
                     if not assets["name"].startswith(repo):
                         # exception for rename repo from bcf- to twr- prefix
                         is_bcf_prefix = assets["name"].startswith('bcf-') and repo.startswith('twr-') and assets["name"][4:].startswith(repo[4:])
                         if is_bcf_prefix:
                             logger.warning('file has bcf prefix "%s"', assets["name"])
+                            assets["name"] = 'twr-' + assets["name"][4:]
                         else:
                             logger.warning('file "%s" does not start the same as the repository name', assets["name"])
                             continue
