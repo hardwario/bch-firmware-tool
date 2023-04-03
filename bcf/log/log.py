@@ -7,7 +7,7 @@ from datetime import datetime
 from time import sleep
 import click
 from colorama import init, Fore, Style
-from ..flasher.serialport.ftdi import SerialPort
+from ..flasher.serialport import SerialPort
 
 
 BAUDRATE = 115200

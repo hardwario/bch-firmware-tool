@@ -29,13 +29,18 @@ NACK = b'\x1F'
 
 
 class Flash_Serial(object):
-    def __init__(self, device, baudrate=921600):
+    def __init__(self, module, device, baudrate=921600):
         self.ser = None
         self._connect = False
         if bridge and 'hidraw' in device:
             self.ser = bridge.SerialPort(device)
         else:
-            self.ser = ftdi.SerialPort(device, baudrate=baudrate, parity=serial.PARITY_EVEN, timeout=0.1)
+            if module == 'LoRa':
+                self.ser = ftdi.LoRaModuleSerialPort(device, baudrate=baudrate, parity=serial.PARITY_EVEN, timeout=0.1)
+            elif module == 'Core':
+                self.ser = ftdi.CoreModuleSerialPort(device, baudrate=baudrate, parity=serial.PARITY_EVEN, timeout=0.1)
+            else:
+                raise Exception(f'Unsupported Hardwario Tower module {module}')
 
     def connect(self):
         if not self._connect:
@@ -289,9 +294,9 @@ def _try_run(api, ntry, fce, *params):
         return False
 
 
-def erase(device, length=196608, reporthook=None, api=None, label='Erase '):
+def erase(module, device, length=196608, reporthook=None, api=None, label='Erase '):
     if api is None:
-        api = Flash_Serial(device)
+        api = Flash_Serial(module, device)
         _run_connect(api)
 
     pages = int(math.ceil(length / 128)) + 1
@@ -313,9 +318,9 @@ def erase(device, length=196608, reporthook=None, api=None, label='Erase '):
             raise Exception(label + ' Error')
 
 
-def write(device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Write '):
+def write(module, device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Write '):
     if api is None:
-        api = Flash_Serial(device)
+        api = Flash_Serial(module, device)
         _run_connect(api)
 
     length = len(firmware)
@@ -336,9 +341,9 @@ def write(device, firmware, reporthook=None, api=None, start_address=0x08000000,
             raise Exception(label + ' Error')
 
 
-def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Verify'):
+def verify(module, device, firmware, reporthook=None, api=None, start_address=0x08000000, label='Verify'):
     if api is None:
-        api = Flash_Serial(device)
+        api = Flash_Serial(module, device)
         _run_connect(api)
 
     length = len(firmware)
@@ -360,9 +365,9 @@ def verify(device, firmware, reporthook=None, api=None, start_address=0x08000000
             reporthook(label, offset + read_len, length)
 
 
-def clone(device, filename, length, reporthook=None, api=None, start_address=0x08000000, label='Clone'):
+def clone(module, device, filename, length, reporthook=None, api=None, start_address=0x08000000, label='Clone'):
     if api is None:
-        api = Flash_Serial(device)
+        api = Flash_Serial(module, device)
         _run_connect(api)
 
     f = open(filename, 'wb')
@@ -387,9 +392,9 @@ def clone(device, filename, length, reporthook=None, api=None, start_address=0x0
     f.close()
 
 
-def _unprotect(device, api=None):
+def _unprotect(module, device, api=None):
     if api is None:
-        api = Flash_Serial(device)
+        api = Flash_Serial(module, device)
         _run_connect(api)
 
     if not api.readout_unprotect():
@@ -455,20 +460,20 @@ def _flash_bin_diff(device, filename, reporthook, api, start_address=0x08000000)
                     raise Exception('Write error')
 
 
-def _flash_bin(device, filename, reporthook, api, skip_verify):
+def _flash_bin(module, device, filename, reporthook, api, skip_verify):
     firmware = open(filename, 'rb').read()
 
-    erase(device, length=len(firmware), reporthook=reporthook, api=api)
+    erase(module, device, length=len(firmware), reporthook=reporthook, api=api)
 
-    write(device, firmware, reporthook=reporthook, api=api)
+    write(module, device, firmware, reporthook=reporthook, api=api)
 
     if skip_verify:
         return
 
-    verify(device, firmware, reporthook=reporthook, api=api)
+    verify(module, device, firmware, reporthook=reporthook, api=api)
 
 
-def _flash_hex(device, filename, reporthook, api, skip_verify):
+def _flash_hex(module, device, filename, reporthook, api, skip_verify):
     ih = intelhex.IntelHex(filename)
 
     flash_address_start = 0x08000000
@@ -563,34 +568,34 @@ def _flash_hex(device, filename, reporthook, api, skip_verify):
                 raise Exception('Verify Error')
 
 
-def flash(device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False, baudrate=921600):
-    api = Flash_Serial(device, baudrate)
+def flash(module, device, filename, run=True, reporthook=None, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False, baudrate=921600):
+    api = Flash_Serial(module, device, baudrate)
 
     _run_connect(api)
 
     if unprotect:
-        _unprotect(device, api)
+        _unprotect(module, device, api)
 
     if erase_eeprom:
-        eeprom_erase(device, reporthook=reporthook, run=False, api=api)
+        eeprom_erase(module, device, reporthook=reporthook, run=False, api=api)
 
     if filename.endswith(".hex"):
         if diff:
             raise Exception('Diff is not implemented')
         else:
-            _flash_hex(device, filename, reporthook, api, skip_verify)
+            _flash_hex(module, device, filename, reporthook, api, skip_verify)
     else:
         if diff:
-            _flash_bin_diff(device, filename, reporthook, api)
+            _flash_bin_diff(module, device, filename, reporthook, api)
         else:
-            _flash_bin(device, filename, reporthook, api, skip_verify)
+            _flash_bin(module, device, filename, reporthook, api, skip_verify)
 
     if run:
         api.go(0x08000000)
 
 
-def reset(device, baudrate=921600):
-    api = Flash_Serial(device, baudrate)
+def reset(module, device, baudrate=921600):
+    api = Flash_Serial(module, device, baudrate)
     api.ser.reset_sequence()
 
 
@@ -604,12 +609,12 @@ def get_list_devices():
     return table
 
 
-def eeprom_read(device, filename, address=0, length=6144, reporthook=None, run=True, api=None, baudrate=921600, label='Read EEPROM'):
+def eeprom_read(module, device, filename, address=0, length=6144, reporthook=None, run=True, api=None, baudrate=921600, label='Read EEPROM'):
     if length > 6144:
         raise Exception('Max length is 6144B.')
 
     if api is None:
-        api = Flash_Serial(device, baudrate)
+        api = Flash_Serial(module, device, baudrate)
         _run_connect(api)
 
     start_address = 0x08080000 + address
@@ -642,12 +647,12 @@ def eeprom_read(device, filename, address=0, length=6144, reporthook=None, run=T
         api.go(0x08000000)
 
 
-def eeprom_write(device, filename, address=0, length=6144, reporthook=None, run=True, api=None, baudrate=921600, label='Write EEPROM'):
+def eeprom_write(module, device, filename, address=0, length=6144, reporthook=None, run=True, api=None, baudrate=921600, label='Write EEPROM'):
     if length > 6144:
         raise Exception('Max length is 6144.')
 
     if api is None:
-        api = Flash_Serial(device, baudrate)
+        api = Flash_Serial(module, device, baudrate)
         _run_connect(api)
 
     with open(filename, 'rb') as f:
@@ -674,9 +679,9 @@ def eeprom_write(device, filename, address=0, length=6144, reporthook=None, run=
         api.go(0x08000000)
 
 
-def eeprom_erase(device, reporthook=None, run=True, api=None, baudrate=921600, label='Erase EEPROM'):
+def eeprom_erase(module, device, reporthook=None, run=True, api=None, baudrate=921600, label='Erase EEPROM'):
     if api is None:
-        api = Flash_Serial(device, baudrate)
+        api = Flash_Serial(module, device, baudrate)
         _run_connect(api)
 
     length = 6144

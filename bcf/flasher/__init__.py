@@ -4,7 +4,7 @@ from . import uart
 from . import dfu
 
 
-def flash(filename, device=None, reporthook=None, run=True, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False, baudrate=921600):
+def flash(filename, module, device=None, reporthook=None, run=True, erase_eeprom=False, unprotect=False, skip_verify=False, diff=False, baudrate=921600):
     if device == 'dfu':
         if filename.endswith(".hex"):
             raise Exception("DFU not support hex.")
@@ -12,21 +12,21 @@ def flash(filename, device=None, reporthook=None, run=True, erase_eeprom=False, 
             raise Exception("DFU not support Unprotect.")
         dfu.flash(filename, reporthook=reporthook, erase_eeprom=erase_eeprom)
     else:
-        uart.flash(device, filename, run=run, reporthook=reporthook, erase_eeprom=erase_eeprom, unprotect=unprotect, skip_verify=skip_verify, diff=diff, baudrate=baudrate)
+        uart.flash(module, device, filename, run=run, reporthook=reporthook, erase_eeprom=erase_eeprom, unprotect=unprotect, skip_verify=skip_verify, diff=diff, baudrate=baudrate)
 
 
-def reset(device):
-    uart.reset(device)
+def reset(module, device):
+    uart.reset(module, device)
 
 
-def eeprom_erase(device, reporthook):
+def eeprom_erase(module, device, reporthook):
     if device == 'dfu':
         dfu.eeprom_erase(reporthook=reporthook)
     else:
-        uart.eeprom_erase(device, reporthook=reporthook, run=True)
+        uart.eeprom_erase(module, device, reporthook=reporthook, run=True)
 
 
-def eeprom_read(device, filename, address=0, length=6144, reporthook=None):
+def eeprom_read(module, device, filename, address=0, length=6144, reporthook=None):
     if 0 > address or address >= 6144:
         raise Exception('Bad address')
 
@@ -36,10 +36,10 @@ def eeprom_read(device, filename, address=0, length=6144, reporthook=None):
     if device == 'dfu':
         dfu.eeprom_read(filename, address, length, reporthook=reporthook)
     else:
-        uart.eeprom_read(device, filename, address, length, reporthook=reporthook)
+        uart.eeprom_read(module, device, filename, address, length, reporthook=reporthook)
 
 
-def eeprom_write(device, filename, address=0, length=6144, reporthook=None):
+def eeprom_write(module, device, filename, address=0, length=6144, reporthook=None):
     if 0 > address or address >= 6144:
         raise Exception('Bad address, max: 6144')
 
@@ -49,4 +49,4 @@ def eeprom_write(device, filename, address=0, length=6144, reporthook=None):
     if device == 'dfu':
         raise Exception('Not implemented.')
     else:
-        uart.eeprom_write(device, filename, address, length, reporthook=reporthook)
+        uart.eeprom_write(module, device, filename, address, length, reporthook=reporthook)

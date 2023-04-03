@@ -1,130 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import __future__
-import sys
-import logging
-import platform
-import serial
-from time import sleep, time
-import math
-import array
-from ctypes import *
-from .error import *
-try:
-    import fcntl
-except ImportError:
-    fcntl = None
+from time import sleep
+from . import SerialPort
 
-__all__ = ["SerialPort"]
+__all__ = ["CoreModuleSerialPort", "LoRaModuleSerialPort"]
 
 
-class SerialPort:
-    def __init__(self, device, baudrate, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, timeout=3):
-        self.ser = None
-        try:
-            self.ser = serial.Serial(device,
-                                     baudrate=baudrate,
-                                     bytesize=bytesize,
-                                     parity=parity,
-                                     stopbits=stopbits,
-                                     timeout=timeout,
-                                     xonxoff=False,
-                                     rtscts=False,
-                                     dsrdtr=False)
-        except serial.serialutil.SerialException as e:
-            if e.errno == 2:
-                raise ErrorOpenDevice('Could not open device %s' % device)
-            if e.errno == 13:
-                raise ErrorOpenDevicePermissionDenied('Could not open device %s Permission denied' % device)
-            raise e
-
-        self._device = device
-
-        self._lock()
-        self._speed_up()
-
-        self.reset_input_buffer = self.ser.reset_input_buffer
-        self.reset_output_buffer = self.ser.reset_output_buffer
-
-        self.write = self.ser.write
-        self.read = self.ser.read
-        self.flush = self.ser.flush
-        self.readline = self.ser.readline
-
-    def close(self):
-        if not self.ser:
-            return
-        self._unlock()
-        try:
-            self.ser.close()
-        except Exception as e:
-            pass
-        self.ser = None
-
-    def reopen(self):
-        self.ser.close()
-        self.ser.open()
-
-    def __del__(self):
-        self.close()
-
-    def _lock(self):
-        if not fcntl or not self.ser:
-            return
-        try:
-            fcntl.flock(self.ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except Exception as e:
-            raise ErrorLockDevice('Could not lock device %s' % self._device)
-
-        logging.debug('_lock')
-
-    def _unlock(self):
-        if not fcntl or not self.ser:
-            return
-        fcntl.flock(self.ser.fileno(), fcntl.LOCK_UN)
-        logging.debug('_unlock')
-
-    def _speed_up(self):
-        if not fcntl:
-            return
-        if platform.system() != 'Linux':
-            return
-
-        logging.debug('_speed_up')
-
-        TIOCGSERIAL = 0x0000541E
-        TIOCSSERIAL = 0x0000541F
-        ASYNC_LOW_LATENCY = 0x2000
-
-        class serial_struct(Structure):
-            _fields_ = [("type", c_int),
-                        ("line", c_int),
-                        ("port", c_uint),
-                        ("irq", c_int),
-                        ("flags", c_int),
-                        ("xmit_fifo_size", c_int),
-                        ("custom_divisor", c_int),
-                        ("baud_base", c_int),
-                        ("close_delay", c_ushort),
-                        ("io_type", c_byte),
-                        ("reserved_char", c_byte * 1),
-                        ("hub6", c_uint),
-                        ("closing_wait", c_ushort),
-                        ("closing_wait2", c_ushort),
-                        ("iomem_base", POINTER(c_ubyte)),
-                        ("iomem_reg_shift", c_ushort),
-                        ("port_high", c_int),
-                        ("iomap_base", c_ulong)]
-
-        buf = serial_struct()
-
-        try:
-            fcntl.ioctl(self.ser.fileno(), TIOCGSERIAL, buf)
-            buf.flags |= ASYNC_LOW_LATENCY
-            fcntl.ioctl(self.ser.fileno(), TIOCSSERIAL, buf)
-        except Exception as e:
-            logging.exception(e)
-
+class CoreModuleSerialPort(SerialPort):
     def boot_sequence(self):
         self.ser.rts = True
         self.ser.dtr = True
@@ -143,5 +26,69 @@ class SerialPort:
     def reset_sequence(self, timeout=0.1):
         self.ser.rts = True
         self.ser.dtr = False
+        sleep(timeout)
+        self.ser.rts = False
+
+
+class LoRaModuleSerialPort(SerialPort):
+    '''Serial port on LoRa Module with boot/reset support
+
+    This class represents the serial port on the Hardwario Tower LoRa Module
+    board. Under normal circumstances, this port is connected to the LPUART1
+    peripheral in the TypeABZ module. The AT command interface runs over that
+    interface.
+
+    For firmware development purposes, I (janakj) have the LoRa Modem connected
+    to a standalone USB-UART converter with a FTDI chip inside. To be able to
+    reset and switch the STM32 MCU inside the TypeABZ module into the
+    bootloader, I connect the RTS signal to the reset pin and the DTR signal to
+    the boot pin on the TypeABZ module. The reset pin is active low. The boot
+    pin is active high.
+
+    The connection is described in the github.com:hardwario/lora-modem Wiki.
+    '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The DTR signal on the USB-UART converter is connected to the TypeABZ's
+        # boot pin. The boot pin is active high. We set the DTR signal here to
+        # False which will set it low, effectively disabling boot mode when the
+        # port has been opened.
+        self.ser.dtr = True
+
+        # The RTS signal on the USB-UART converter is connected to the TypeABZ's
+        # reset pin. The pin is active low. Thus, we set the RTS signal to False
+        # which will set the signal high, disabling reset after the port has
+        # been opened.
+        self.ser.rts = False
+
+    def boot_sequence(self):
+        '''Activate the bootloader in the TypeABZ module.
+
+        The following sequence activates the bootloader in the TypeABZ module
+        and resets the module. We first set the DTR signal high (which is
+        connected to the boot pin), then reset the modem, and then we set the
+        DTR signal (boot pin) low again.
+        '''
+        self.ser.dtr = False
+        sleep(0.01)
+
+        self.ser.rts = True
+        sleep(0.05)
+        self.ser.rts = False
+        sleep(0.05)
+
+        self.ser.dtr = True
+
+    def reset_sequence(self, timeout=0.1):
+        '''Reset the module into normal operational mode.
+
+        The following sequence resets the LoRa Module to bring it to the normal
+        operational mode. We disable the boot mode (DTR = True) in case boot
+        mode was activated. Then we shortly bring the RTS signal low to reset
+        the TypeABZ module.
+        '''
+        self.ser.dtr = True
+
+        self.ser.rts = True
         sleep(timeout)
         self.ser.rts = False

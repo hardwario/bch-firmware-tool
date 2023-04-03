@@ -149,13 +149,14 @@ def command_devices(verbose=False, include_links=False):
 
 
 @cli.command('eeprom')
+@click.option('-m', '--module', type=str, help='Tower module type: Core (default) or LoRa.', default='Core')
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--read', type=str, help='Read EEPROM and save to file.', metavar='FILE')
 @click.option('--erase', is_flag=True, help='Erase EEPROM.')
 @click.option('--write', type=str, help='Read file adn write to EEPROM.', metavar='FILE')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
 @click.pass_context
-def command_eeprom(ctx, device, read, erase, write, dfu):
+def command_eeprom(ctx, module, device, read, erase, write, dfu):
     '''Work with EEPROM.'''
     if device is None:
         device = ctx.obj['device']
@@ -167,17 +168,18 @@ def command_eeprom(ctx, device, read, erase, write, dfu):
     device = select_device('dfu' if dfu else device)
 
     if read:
-        flasher.eeprom_read(device, read, address=0, length=6144, reporthook=print_progress_bar)
+        flasher.eeprom_read(module, device, read, address=0, length=6144, reporthook=print_progress_bar)
 
     if erase:
-        flasher.eeprom_erase(device, reporthook=print_progress_bar)
+        flasher.eeprom_erase(module, device, reporthook=print_progress_bar)
 
     if write:
-        flasher.eeprom_write(device, write, address=0, length=6144, reporthook=print_progress_bar)
+        flasher.eeprom_write(module, device, write, address=0, length=6144, reporthook=print_progress_bar)
 
 
 @cli.command('flash')
 @click.argument('what', metavar="<firmware from list|file|url|firmware.bin>", default="firmware.bin", **fwAutocompleteteArgs)
+@click.option('-m', '--module', type=str, help='Tower module type: Core (default) or LoRa.', default='Core')
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--log', is_flag=True, help='Show all releases.')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
@@ -189,7 +191,7 @@ def command_eeprom(ctx, device, read, erase, write, dfu):
 @click.option('--baudrate', type=int, help='Baudrate (default 921600).', default=921600)
 @bcflog.click_options
 @click.pass_context
-def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_verify, diff, slow, baudrate, **args):
+def command_flash(ctx, what, module, device, log, dfu, erase_eeprom, unprotect, skip_verify, diff, slow, baudrate, **args):
     '''Flash firmware.'''
     if device is None:
         device = ctx.obj['device']
@@ -217,7 +219,7 @@ def command_flash(ctx, what, device, log, dfu, erase_eeprom, unprotect, skip_ver
         if slow:
             baudrate = 115200
 
-        flasher.flash(filename, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect, skip_verify=skip_verify, diff=diff, baudrate=baudrate)
+        flasher.flash(filename, module, device, reporthook=print_progress_bar, run=not log, erase_eeprom=erase_eeprom, unprotect=unprotect, skip_verify=skip_verify, diff=diff, baudrate=baudrate)
         if log:
             bcflog.run_args(device, args, reset=True)
 
@@ -318,26 +320,28 @@ def command_pull(what):
 
 @cli.command('read')
 @click.argument('filename')
+@click.option('-m', '--module', type=str, help='Tower module type: Core (default) or LoRa.', default='Core')
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--dfu', is_flag=True, help='Use dfu mode.')
 @click.option('--length', help='length.', default=196608, type=int)
 @click.pass_context
-def command_read(ctx, filename, length, device=None, dfu=False):
+def command_read(ctx, filename, length, module, device=None, dfu=False):
     '''Download firmware to file.'''
     if device is None:
         device = ctx.obj['device']
 
     device = select_device('dfu' if dfu else device)
 
-    flasher.uart.clone(device, filename, length, reporthook=print_progress_bar, label='Read')
+    flasher.uart.clone(module, device, filename, length, reporthook=print_progress_bar, label='Read')
 
 
 @cli.command('reset')
+@click.option('-m', '--module', type=str, help='Tower module type: Core (default) or LoRa.', default='Core')
 @click.option('-d', '--device', type=str, help='Device path.')
 @click.option('--log', is_flag=True, help='Show all releases.')
 @bcflog.click_options
 @click.pass_context
-def command_reset(ctx, device=None, log=False, **args):
+def command_reset(ctx, module, device=None, log=False, **args):
     '''Reset core module.'''
     if device is None:
         device = ctx.obj['device']
@@ -350,7 +354,7 @@ def command_reset(ctx, device=None, log=False, **args):
     if log:
         bcflog.run_args(device, args, reset=True)
     else:
-        flasher.reset(device)
+        flasher.reset(module, device)
 
 
 @cli.command('search')
