@@ -1,6 +1,15 @@
-name: Main
+name: Test
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - '**/README.md'
+      - '.*'
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
 
 defaults:
   run:
