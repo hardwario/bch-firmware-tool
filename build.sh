@@ -24,7 +24,7 @@ pkgver_from_git() {
 	if desc="$(git describe --tags --exact-match --match 'v*' 2>/dev/null)"; then
 		echo "${desc#v}" | sed 's/[_-]/~/g'
 	elif desc="$(git rev-parse --short=8 HEAD 2>/dev/null)"; then
-		echo "$desc"
+		echo "0.0.0+git${desc}"
 	else
 		return 1
 	fi

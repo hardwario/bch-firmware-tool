@@ -71,6 +71,15 @@ Commands:
   update   Update list of available firmware.
 ```
 
+## Local debug CI
+
+```
+docker run --rm -it -v `pwd`:`pwd` -w `pwd` -u `id -u`:`id -g` python:3.12 /bin/bash
+rm -rf .venv
+./test.sh
+./build.sh
+```
+
 
 ## License
 
