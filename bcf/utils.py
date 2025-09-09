@@ -5,17 +5,20 @@ import sys
 import serial
 import click
 import requests
-import platform
 import hashlib
 import appdirs
 import re
-from distutils.version import LooseVersion
+try:
+    from packaging.version import parse as parse_version
+except ImportError:
+    from distutils.version import LooseVersion as parse_version
+
 from bcf.firmware.FirmwareList import FirmwareList
 
 user_cache_dir = appdirs.user_cache_dir('bcf')
 user_config_dir = appdirs.user_config_dir('bcf')
 
-pyserial_34 = LooseVersion(serial.VERSION) >= LooseVersion("3.4.0")
+pyserial_34 = parse_version(serial.VERSION) >= parse_version("3.4.0")
 
 
 def get_fwlist():
